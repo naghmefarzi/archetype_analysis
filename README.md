@@ -1,6 +1,11 @@
 # Character Actions Analysis with Generative AI
 
-This project analyzes characters and their associated actions in short stories using a Generative AI model. It extracts character names and identifies their roles through natural language processing, providing insights into character interactions and narratives.
+This project analyzes characters and their associated actions in short stories using a Generative AI model. It extracts character names and identifies their roles through natural language processing, providing insights into character interactions and narratives. then calculating the similarities between actions we aim to cluster characters with the goal of finding same archetypes.
+
+Overview of the project:
+
+![Overview](./Screenshot%202024-10-29%20at%2012.56.50%20PM.png)
+
 
 ## Table of Contents
 

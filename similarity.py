@@ -37,7 +37,6 @@ def get_embedding(phrase):
     return np.mean(embeddings, axis=0) if embeddings else np.zeros((300,)) 
 
 
-# Function to compute cosine similarity between two lists of roles
 def cosine_sim(roles1, roles2):
     similarities = []
     for role1 in roles1:
