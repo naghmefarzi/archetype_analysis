@@ -1,6 +1,6 @@
-# Character Actions Analysis with Generative AI
+# Archetype Analysis based on Character extraction and Action Extraction
 
-This project analyzes characters and their associated actions in short stories using a Generative AI model. It extracts character names and identifies their roles through natural language processing, providing insights into character interactions and narratives. then calculating the similarities between actions we aim to cluster characters with the goal of finding same archetypes.
+This project analyzes characters and their associated actions in short stories or movie plots using a Generative AI model. It extracts character names and identifies their roles, providing insights into character interactions and narratives. then calculating the similarities between actions we aim to cluster characters with the goal of finding same archetypes.
 
 Overview of the project:
 
@@ -46,19 +46,18 @@ Set up your API key for Google Generative AI:
 
 export GEMINI_API_KEY='your_api_key_here'
 
-Populate the data list in the main script with short stories formatted as dictionaries. Each dictionary should include:
+Populate the data list in the main script with short stories formatted as dictionaries, or use a file containing that. Each dictionary should include:
 
 "Title": The title of the story.
 "Plot": The narrative text of the story.
 "Characters": Optional.
-Run the script:
 
 
-python <script_name>.py
+
+
 The extracted character and action data will be saved in a JSON Lines file named character_actions_analysis.jsonl.
 
-Code Structure
-UnitTests Class: Handles API calls to the Generative AI model to generate character and action data.
+
 
 test_text_gen_text_only_prompt(prompt): Sends prompts to the AI model and retrieves generated content.
 extract_characters_and_actions(ut, short_story, role_list): Analyzes the provided short story, extracting characters and identifying their roles through generated responses.
