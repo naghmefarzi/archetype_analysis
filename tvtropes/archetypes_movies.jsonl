@@ -1,0 +1,208 @@
+[{
+    "archetype_name": "The Everyman",
+            "src": "https://tvtropes.org/pmwiki/pmwiki.php/Main/TheEveryman",
+            "description": "A character who is ordinary enough to be relatable to the average audience member. Everyman characters are often working or middle-class people with regular jobs, dealing with everyday problems like school, work, family, or romance. They may also be plunged into extraordinary circumstances, making them even more sympathetic as they are in over their head. Everyman characters are typically grounded and less eccentric than supporting characters.",
+            "used_subtropes": "False",
+            "only_used_subtropes": "False",
+            "movies": [
+            "Dom Coms", "Black Hawk Down", "Die Hard", "District 9", "Idiocracy", 
+            "Joe Versus the Volcano", "Mad Max", "The Mask", "Genshiken", 
+            "B Gata H Kei", "Code Geass", "Dragon Ball", "The Idolmaster", 
+            "Sailor Moon", "Pleasant Goat and Big Big Wolf", "The Inexplicable Adventures of Bob!"
+            ]
+},
+{
+    "archetype_name": "The Caregiver",
+            "src": "https://tvtropes.org/pmwiki/pmwiki.php/Main/TheCaretaker",
+            "description": "The Caregiver or Caretaker is a character who puts their life on hold to take care of a loved one, often when others have abandoned their relative. This role typically involves a close relationship with a Cloudcuckoolander, a Sickly person, or other needy character types.",
+            "movies": [
+            "At First Sight", "Benny & Joon", "Eternals", "The Haunting (1999)", 
+            "Lorenzo's Oil", "Molly (1999)", "Repo! The Genetic Opera", 
+            "The Secret Garden", "The Whales of August", "X-Men: Days of Future Past", 
+            "Logan", "Absolutely Fabulous", "Arrested Development", 
+            "Buffy the Vampire Slayer", "Fellow Travelers", "Firefly", "Fringe", 
+            "Interview with the Vampire (2022)", "Kamen Rider Ex-Aid", 
+            "Star Trek: Voyager", "Supernatural"
+            ]
+},
+{
+    "archetype_name": "The Jester",
+        "src": "https://tvtropes.org/pmwiki/pmwiki.php/Main/TheJester",
+        "subtropes": ["Court Jester", "Mirth to Power"],
+        "used_subtropes": "True",
+        "only_used_subtropes": "True",
+        "description": {
+          "Court Jester": "A Stock Character in royal courts, the jester is a clown whose foolish demeanor often hides deeper intentions, like being a bodyguard or assassin. He is one of the few who can tell the king things he doesn’t want to hear.",
+          "Mirth to Power": "Humor is used to convey uncomfortable truths to the powerful, making the jester a key figure in balancing authority and truth."
+        },
+        "movies": {
+          "Court Jester": ["American Playhouse", "Babylon 5", "Merlin", "Succession", "The Court Jester", "The Northman", "The Death of Stalin"],
+          "Mirth to Power": ["Chernobyl", "Game of Thrones", "Horrible Histories", "Merlin (2008)", "Russell Howard's Good News", "Sketch History", "Succession"]
+        }
+},
+{
+    "archetype_name": "The Lover",
+        "src": "https://www.britopian.com/content/the-lover-archetype",
+        "description": "",
+        "used_subtropes": "False",
+        "only_used_subtropes": "False",
+        "movies": ["Titanic", "Moulin Rouge!", "West Side Story", "The Notebook"]
+},
+
+{
+    "archetype_name": "The Hero",
+        "src": "https://tvtropes.org/pmwiki/pmwiki.php/Main/TheHero",
+        "description": {
+          "The Hero": "The Hero overcomes adversity and challenges by performing acts of great strength, ingenuity, and valor. Heroes often fight for goodness in modern stories, but in classical tales, heroism was driven by honor and pride.",
+          "Accidental Hero": "A character becomes celebrated for heroism despite not doing anything particularly special.",
+          "Ideal Hero": "The Ideal Hero remains good throughout the story and is often rewarded for their actions.",
+          "War Hero": "A character decorated for heroism on the battlefield, often part of their backstory or current role."
+        },
+        "subtropes": ["Accidental Hero", "Ideal Hero", "War Hero"],
+        "used_subtropes": "True",
+        "only_used_subtropes": "True",
+        "movies": {
+          "Accidental Hero": ["Accidental Hero (1992)", "Amistad", "Army of Darkness", "The Bank Dick", "Footloose", "Forrest Gump", "Jurassic World"],
+          "Ideal Hero": ["The Dark Knight", "Marvel Cinematic Universe", "Star Wars"],
+          "War Hero": ["Captain America: The First Avenger", "Escape from New York", "The Godfather", "Patton", "The Rock"]
+        }
+},
+{
+    "archetype_name": "The Sage",
+        "src": "https://tvtropes.org/pmwiki/pmwiki.php/Main/BarefootSage",
+        "description": {
+          "Barefoot Sage": "A wise person with an aversion to shoes, often connected to nature or spiritual asceticism.",
+          "Mentor": "An experienced advisor to a young character, typically passing on skills or wisdom.",
+          "Sage Love Interest": "A Love Interest who also offers spiritual or profound advice."
+        },
+        "used_subtropes": "True",
+        "only_used_subtropes": "True",
+        "subtropes": ["Barefoot Sage", "Mentor", "Sage Love Interest"],
+        "movies": {
+          "Barefoot Sage": ["Agora", "Star Wars", "Doctor Who"],
+          "Mentor": ["The Exorcist", "The Matrix", "The Mask of Zorro"],
+          "Sage Love Interest": ["Charmed (1998)", "Vikings", "The Lord of the Rings"]
+        }
+},
+{
+    "archetype_name": "The Magician",
+        "src": "https://www.reddit.com/r/Jung/comments/oqxt9y/what_are_some_movies_based_on_the_magician",
+        "description": "",
+        "used_subtropes": "False",
+        "only_used_subtropes": "False",
+        "movies": ["Lord of the Rings", "The Martian", "Harry Potter", "Labyrinth", "The Prestige", "The Illusionist"]
+
+},
+{
+    "archetype_name": "The Outlaw",
+        "src": "https://tvtropes.org/pmwiki/pmwiki.php/Main/Outlaw",
+        "description": "The term 'outlaw' reaches back to at least Old Norse; it denotes a person who has been declared guilty of a crime in absentia and has chosen to escape for whatever reason, and is thus placed outside the protection of the law. Members of the community were forbidden to aid or abet the outlaw in any way lest they suffer the same punishment as the outlaw. Being outside the protection of the law meant they had no legal rights, meaning anyone could kill them with impunity. The outlaw could not live in the community but was forced to flee to the wilderness or another country to try to survive until their sentence of outlawry expired or their relatives could somehow lift it. In the medieval era, an outlaw was known as a 'wolfshead'—equated to a wolf in the eyes of the law, to be hunted down like one.",
+        "used_subtropes": false,
+        "only_used_subtropes": false,
+        "movies": [
+            "Butch Cassidy and the Sundance Kid",
+            "Captain Thunderbolt",
+            "The Outlaw Michael Howe",
+            "The Proposition",
+            "Mad Dog Morgan",
+            "Van Diemen's Land",
+            "Wolf Creek",
+            "Death Rides a Horse",
+            "God's Gun",
+            "The Outlaw Josey Wales",
+            "Posse (1975)",
+            "Robin Hood 1912",
+            "Alias Smith and Jones",
+            "Norsemen",
+            "Wild Boys"
+        ]
+}, 
+{
+    "archetype_name": "The Ruler",
+        "src": "https://www.dabblewriter.com/articles/the-ruler-archetype",
+        "description": "",
+        "used_subtropes": false,
+        "only_used_subtropes": false,
+        "movies": [
+            "Hunger Games",
+            "Star Wars",
+            "Lord of the Rings",
+            "Devil Wears Prada",
+            "Lost Boys (Peter Pan)"
+        ]
+},
+{
+    "archetype_name": "The Artist",
+        "src": "https://tvtropes.org/pmwiki/pmwiki.php/Main/MadArtist",
+        "description": {
+            "Mad Artist": "The right-brain equivalent to the Mad Scientist, Mad Mathematician, and Mad Doctor. May work in any medium, but the subject is almost always evil. They may make statues by dipping live people in concrete/wax, cover their victims in paint and force them to dance upon their canvas, or try to get the perfect ending to their murder mystery novel by starting a real murder mystery.",
+            "Sensitive Artist": "Apart from the stereotypes that they are weird and poor, artists—those involved in the visual, literary, and performing arts, but also anyone who treats their craft as an art form—are often portrayed as sensitive individuals, typically referring to emotional sensitivity, being empathetic, introspective, or highly intuitive."
+        },
+        "used_subtropes": true,
+        "only_used_subtropes": true,
+        "subtropes": [
+            "Mad Artist",
+            "Sensitive Artist"
+        ],
+        "movies": {
+            "Mad Artist": [
+                "8mm",
+                "101 Dalmatians (1996)",
+                "Art of the Dead",
+                "Art School Confidential",
+                "Batman (1989)",
+                "The Black Cat",
+                "Bound for Glory",
+                "A Bucket of Blood",
+                "Carmen",
+                "The House That Jack Built"
+            ],
+            "Sensitive Artist": [
+                "Bedazzled (2000)",
+                "If You Could Say It in Words",
+                "Moulin Rouge",
+                "Anne with an E",
+                "Bones",
+                "Boy Meets World",
+                "Cluedo",
+                "The Crown (2016)",
+                "The Cry of Mann",
+                "Dead to Me",
+                "Power Rangers: Dino Thunder",
+                "Wizards of Waverly Place"
+            ]
+        }
+},
+{
+    "archetype_name": "The Innocent",
+        "src": "https://www.dabblewriter.com/articles/the-innocent-archetype#:~:text=Examples%20of%20the%20Innocent%20Archetype%20in%20Popular,%C2%B7%20Diana%20Barry%2C%20Anne%20of%20Green%20Gables.",
+        "description": "Anything is possible, everyone is ultimately good, and we all deserve to lead joyful, love-filled lives. That is the philosophy of puppers and Innocents alike.",
+        "used_subtropes": false,
+        "only_used_subtropes": false,
+        "movies": [
+            "Elf",
+            "The Good Place",
+            "Anne of Green Gables",
+            "The Mandalorian"
+        ]
+},
+{
+    "archetype_name": "The Explorer",
+        "src": "https://arielhudnall.com/2015/03/16/archetypes-explorer/comment-page-1/",
+        "description": "There are those that refuse to be caged in. The explorer is a self-fulfiller, self-motivated, self-driven, and self-sufficient. Independence is their hallmark.",
+        "used_subtropes": false,
+        "only_used_subtropes": false,
+        "movies": [
+            "James and the Giant Peach",
+            "Almost Famous",
+            "Rugrats",
+            "Erin Brockovich",
+            "Star Trek: The Original Series",
+            "Indiana Jones and the Dial of Destiny",
+            "The Goonies",
+            "Guardians of the Galaxy",
+            "How to Train Your Dragon"
+        ]
+    
+}]
+

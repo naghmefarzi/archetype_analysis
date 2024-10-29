@@ -30,12 +30,12 @@ data = [
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
 
-class UnitTests():
+class UnitTests:
     def test_text_gen_text_only_prompt(self, prompt: str):
         model = genai.GenerativeModel("gemini-1.5-flash")
         
-        MAX_RETRIES = 5  # Set a maximum number of retries
-        SLEEP_TIME = 2   # Initial sleep time in seconds
+        MAX_RETRIES = 9  # Set a maximum number of retries
+        SLEEP_TIME = 4   # Initial sleep time in seconds
 
         for attempt in range(MAX_RETRIES):
             try:
@@ -50,79 +50,88 @@ class UnitTests():
                 if attempt < MAX_RETRIES - 1:
                     print(f"Resource exhausted. Retrying in {SLEEP_TIME} seconds...")
                     time.sleep(SLEEP_TIME)  # Wait before retrying
-                    SLEEP_TIME *= 2  # Exponential backoff
+                    SLEEP_TIME *= 3  # Exponential backoff
                 else:
                     print("Max retries reached. Please check your API usage.")
-                    raise exc  # Re-raise the exception after max retries
+                    raise exc  
             except Exception as e:
                 print(f"An error occurred: {e}")
-                break  # Handle other exceptions if necessary
+                break  
 
 
-def extract_characters_and_actions(ut, short_story):
+def extract_characters_and_actions(ut, short_story,role_list = []):
     # Step 1: Find characters in the story
     character_prompt = "Identify the characters in the following story:\n" + short_story
     character_response = ut.test_text_gen_text_only_prompt(character_prompt)
     characters = re.findall(r"\*\s+\*\*(.*?):\*\*", character_response)
     print(f"characters:{characters}")
-    
+    role_list = set(role_list)
     # Step 2: Find actions associated with each character
     actions_dict = {}
     for character in characters:
-        # action_prompt = f"Identify the significant actions as general verbs associated with the character '{character}' in the story:\n" + short_story
-        action_prompt = f"Identify the significant actions associated with the character '{character}' in the story, using general verbs only. Here is the story:\n{short_story}"
+        # action_prompt = f"Identify the significant actions associated with the character '{character}' in the story, using general verbs only. Here is the story:\n{short_story}"
+        if len(role_list) == 0:
+            action_prompt = f"""
+            Analyze the given short story and identify the character {character}'s primary role. 
+            Please provide only 5 concise bullet points that accurately describe their role, **avoiding any specific names**. 
+
+            **Short story:**
+            {short_story}
+            """
+            
+        else:    
+            action_prompt = f"""
+            Analyze the given short story and identify the character {character}'s primary role. 
+            Please provide only 5 concise bullet points that accurately describe their role, **avoiding any specific names**. 
+            Use the provided role list as a guide, but feel free to suggest a new role if it better fits the character's actions and motivations within the story.
+
+            **Short story:**
+            {short_story}
+
+            **Role list:**
+            {role_list}
+            """
 
         try:
             action_response = ut.test_text_gen_text_only_prompt(action_prompt)
             actions = re.findall(r'\*\s+\*\*(.*?):\*\*', action_response)
         except:
+            print(actions)
             actions = []
-        if actions == None:
+        if actions is None:
             actions = []
             
-        if actions !=[]:    
+        if actions != []:    
             actions_dict[character] = actions
-        else:
-            characters.remove(character)
+        # else:
+        #     characters.remove(character)
     
     return characters, actions_dict
-
-
-#rule based kind of comparison
-
-def compare_functions(existing_functions, new_actions_dict):
-    suggested_functions = []
-    for character, actions in new_actions_dict.items():
-        for action in actions:
-            if action not in existing_functions:
-                suggested_functions.append(action)
-    return suggested_functions
 
 
 if __name__ == "__main__":
     ut = UnitTests()
     existing_functions = set()  # Keep track of functions (actions) found so far
 
-    with open('./character_actions_analysis.jsonl', 'w') as jsonl_file:
+    with open('./character_actions_analysis_oct24_1.jsonl', 'w') as jsonl_file:
         for i in range(len(data)):  # Loop for multiple documents/stories
             # Step 1: Generate a short story
-            movie  = data[i]
+            movie = data[i]
             short_story = movie["Plot"]
             title = movie["Title"]
 
             # Step 2: Extract characters and their actions from the story
-            characters, actions_dict = extract_characters_and_actions(ut, short_story)
+            characters, actions_dict = extract_characters_and_actions(ut, short_story,existing_functions)
             print("Characters:", characters)
             print("Actions:", actions_dict)
 
             # Step 3: For the first document, record functions. For subsequent, compare and suggest new functions
-            if i == 0:
-                existing_functions.update([action for actions in actions_dict.values() for action in actions])
-            else:
-                new_functions = compare_functions(existing_functions, actions_dict)
-                if new_functions:
-                    print("Suggested new functions:", new_functions)
-                    existing_functions.update(new_functions)
+            # if i == 0:
+            existing_functions.update([action for actions in actions_dict.values() for action in actions])
+            # else:
+                # updated_actions_dict = compare_functions(existing_functions, actions_dict, ut)
+                # print("Updated actions dict:", updated_actions_dict)
+                # existing_functions.update([action for actions in updated_actions_dict.values() for action in actions])
 
             # Save the story and character action data to JSONL
             extracted_output = {
@@ -130,9 +139,8 @@ if __name__ == "__main__":
                 "plot": short_story,
                 "characters": characters,
                 "actions_dict": actions_dict,
-                "suggested_new_functions": new_functions if i > 0 else None
+                "all_actions": list(existing_functions)
             }
             jsonl_file.write(json.dumps(extracted_output) + '\n')
 
     # absltest.main()
-
