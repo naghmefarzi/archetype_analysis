@@ -55,7 +55,7 @@ Populate the data list in the main script with short stories formatted as dictio
 
 
 
-The extracted character and action data will be saved in a JSON Lines file named character_actions_analysis.jsonl.
+The extracted character and action data will be saved in a JSON Lines file.
 
 
 
@@ -78,3 +78,5 @@ The output is saved in a JSON Lines format, where each line contains a JSON obje
   },
   "all_actions": ["Action 1", "Action 2", ...]
 }
+
+The similarity then is being calculated using jaccard and embediing based cosine similarity, between then actions.

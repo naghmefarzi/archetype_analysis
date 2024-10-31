@@ -37,13 +37,23 @@ def get_embedding(phrase):
     return np.mean(embeddings, axis=0) if embeddings else np.zeros((300,)) 
 
 
-def cosine_sim(roles1, roles2):
+def old_cosine_sim(roles1, roles2):
     similarities = []
     for role1 in roles1:
         role1_vec = get_embedding(role1)
         max_sim = max([cosine_similarity([role1_vec], [get_embedding(role2)])[0][0] for role2 in roles2])
         similarities.append(max_sim)
     return np.max(similarities)
+
+
+def cosine_sim(roles1, roles2):
+    similarities = []
+    for role1 in roles1:
+        role1_vec = get_embedding(role1)
+        max_sim = max([cosine_similarity([role1_vec], [get_embedding(role2)])[0][0] for role2 in roles2])
+        similarities.append(max_sim)
+    return np.mean(similarities)
+
 
 def compare_movies(movie1, movie2):
     char_similarities = {}
@@ -86,8 +96,8 @@ def load_movies(file_path):
     return movies
 
 
-
-movies = load_movies('character_actions_analysis_oct24_1.jsonl')
+movie_file_name = '/extract_results/1k_movie_oct31.jsonl'
+movies = load_movies(movie_file_name)
 similarities = compare_all_movies(movies)
 # Print similarities for each character comparison
 for movie_pair, char_similarities in similarities.items():
@@ -136,7 +146,7 @@ def create_character_heatmap(similarities, metric='Jaccard'):
 
     # Save to file
     plt.tight_layout()  
-    plt.savefig(f'character_similarity_heatmap_{metric}.png')
+    plt.savefig(f'./similarity_figs/character_similarity_heatmap{movie_file_name}_{metric}.png')
     plt.close()  
 
     # plt.show()
