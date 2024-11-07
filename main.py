@@ -1,6 +1,8 @@
 # from absl.testing import absltest
 import google.generativeai as genai
 from google.api_core.exceptions import ResourceExhausted
+from model_utils import get_model_baseline
+import torch
 
 import os
 import re
@@ -9,6 +11,15 @@ import argparse
 import random
 import time
 from google.api_core.exceptions import ResourceExhausted
+from llm import get_response_baseline
+
+import openai
+from openai import OpenAI
+
+# client = None
+
+
+
 
 data = [
     {"Title": "Harry Potter and the Philosopher's Stone (film)", "Plot": "Late one night, Albus Dumbledore and Minerva McGonagall, professors at Hogwarts School of Witchcraft and Wizardry, along with groundskeeper Rubeus Hagrid, deliver an orphaned infant wizard named Harry Potter to his Muggle aunt and uncle, Petunia and Vernon Dursley, his only living relatives.\n\nTen years later, just before Harry's eleventh birthday, owls begin delivering letters addressed to him. When the abusive Dursleys adamantly refuse to allow Harry to open any and flee to an island hut, Hagrid arrives to personally deliver Harry's letter of acceptance to Hogwarts. Hagrid also reveals that Harry's late parents, James and Lily, were killed by a dark wizard named Lord Voldemort. The killing curse that Voldemort had cast towards Harry rebounded, destroying Voldemort's body and giving Harry the lightning-bolt scar on his forehead. Hagrid then takes Harry to Diagon Alley for school supplies and gives him a pet snowy owl whom he names Hedwig. Harry buys a wand that is connected to Voldemort's own wand.\n\nAt King's Cross, Harry boards the Hogwarts Express train, and meets fellow first-years Ron Weasley and Hermione Granger during the journey. Arriving at Hogwarts, Harry also meets Draco Malfoy, who is from a wealthy wizard family; the two immediately form a rivalry. The students assemble in the Great Hall where the Sorting Hat sorts the first-years into four respective houses: Gryffindor, Hufflepuff, Ravenclaw, and Slytherin. Harry is placed into Gryffindor alongside Ron and Hermione, while Draco is placed into Slytherin, a house noted for dark wizards.\n\nAs he studies magic, Harry learns more about his parents and Voldemort, and his innate talent for broomstick flying gets him recruited for the Gryffindor Quidditch team as the youngest Seeker in a century. While returning to the Gryffindor common room, the staircases change paths, leading Harry, Ron and Hermione to the third floor, which is forbidden to students. There they discover a giant three-headed dog named Fluffy. On Halloween, Ron insults Hermione after she shows off in Charms class. Upset, she spends the entire afternoon crying in the girls' bathroom. That evening, a giant marauding troll enters it but Harry and Ron save Hermione; they make up and become close friends after Hermione takes the blame for the incident by saying she went looking for the troll.\n\nThe trio discover that Fluffy is guarding the philosopher's stone, a magical object that can turn metal into gold and produce an immortality elixir. Harry suspects that Severus Snape, the Potions teacher and head of Slytherin, wants the stone to return Voldemort to physical form. When Hagrid accidentally reveals that music puts Fluffy to sleep, Harry, Ron and Hermione decide to find the stone before Snape. Fluffy is already asleep, but the trio face other barriers, including a deadly plant called Devil's Snare, a room filled with aggressive flying keys, and a giant chess game that knocks out Ron.\n\nAfter overcoming the barriers, Harry encounters Defence Against the Dark Arts teacher Quirinus Quirrell, who wants the stone; Snape had figured this out and had been protecting Harry. Quirrell removes his turban to reveal a weakened Voldemort living on the back of his head. Dumbledore's protective enchantment places the stone in Harry's possession. Voldemort attempts to bargain the stone from Harry in exchange for resurrecting his parents, but Harry sees through his trick and refuses. Quirrell attempts to kill Harry. When Harry touches Quirrell's skin, it burns Quirrell, reducing him to ashes. Voldemort's soul rises from the pile and escapes, knocking out Harry as it passes through him.\n\nHarry recovers in the school infirmary. Dumbledore tells him the stone has been destroyed to prevent misuse, and that Ron and Hermione are safe. He also reveals how Harry defeated Quirrell: when Lily died to save Harry, a love-based protection against Voldemort was placed on him. At the end-of-school-year feast, Harry, Ron, and Hermione are rewarded extra house points for their heroism, tying Gryffindor for first place with Slytherin; Dumbledore then awards ten points to their housemate Neville Longbottom for having had the courage to stand up to the trio, granting Gryffindor the House Cup. Harry returns to the Dursleys for the summer, happy to finally have a real home at Hogwarts.", "Characters": ["a baby.[10]", "the casting team asked for a meeting with him.[9]", "Hermione Granger: Harry's other best friend and the trio's brains. Watson's Oxford theatre teacher passed her name on to the casting agents and she had to do over five interviews before she got the part.[11] Watson took her audition seriously, but \"never really thought [she] had any chance of getting the role.\"[9] The producers were impressed by Watson's self-confidence and she outperformed the thousands of other girls who had applied.[12]", "Nearly Headless Nick: The ghost of Gryffindor House.[13]", "McGonagall.[14][15] Coltrane, who was already a fan of the books, prepared for the role by discussing Hagrid's past and future with Rowling.[16][17]", "Filius Flitwick: The Charms Master and head of Ravenclaw House.[18] Davis also plays two other roles in the film: the Goblin Head Teller at Gringotts,[19] and dubs the voice of Griphook, who is embodied by Verne Troyer.[20]", "Vernon Dursley: Harry's Muggle uncle.[19]", "Albus Dumbledore: Hogwarts' Headmaster and one of the most famous and powerful wizards of all time. Harris initially rejected the role, only to reverse his decision after his granddaughter stated she would never speak to him again if he did not take it.[21][22][23]", "a hooded figure during a flashback.[24][25]", "Mr. Ollivander: a highly regarded wandmaker and the owner of Ollivanders.[19]", "Severus Snape: The Potions Master and head of Slytherin House.", "Petunia Dursley: Harry's Muggle aunt.[19]", "Hagrid.[14]", "Molly Weasley: Ron's mother. She shows Harry how to get to Platform 9+3\u20444.[26]"]},
@@ -25,7 +36,6 @@ data = [
 
 
 
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
 
 class UnitTests:
@@ -55,117 +65,249 @@ class UnitTests:
             except Exception as e:
                 print(f"An error occurred: {e}")
                 break  
+import re
 
 
-def extract_characters_and_actions(ut, short_story,role_list = []):
-    # Step 1: Find characters in the story
-    character_prompt = "Identify the characters in the following story:\n" + short_story
-    character_response = ut.test_text_gen_text_only_prompt(character_prompt)
-    characters = None
-    if character_response is not None:
-        characters = re.findall(r"\*\s+\*\*(.*?):\*\*", character_response)
-        print(f"characters:{characters}")
-        role_list = set(role_list)
-        # Step 2: Find actions associated with each character
-        actions_dict = {}
-        for character in characters:
-            # action_prompt = f"Identify the significant actions associated with the character '{character}' in the story, using general verbs only. Here is the story:\n{short_story}"
-            if len(role_list) == 0:
-                action_prompt = f"""
-                Analyze the given short story and identify the character {character}'s primary role. 
-                Please provide only 5 concise bullet points that accurately describe their role, limit the roles to single/double words. **avoiding any specific names**. 
 
-                **Short story:**
-                {short_story}
-                """
-                
-                # action_prompt = f"""
-                # Analyze the given short story and identify the character {character}'s primary role. 
-                # Please provide only 5 concise bullet points that accurately describe their role, limit the roles to single/double words. **avoiding any specific names**. 
+def generate_text_gpt(prompt, model="gpt-4o-mini", max_tokens=100, temperature=0.7,client=None):
+    openai.api_key = os.environ.get("OPENAI_API_KEY")
+    client = OpenAI()
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        )
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        generated_text = response.choices[0].message.content
+        # print(f"generate text is : {generated_text}")
+        return generated_text
 
-                # **Short story:**
-                # {short_story}
-                # """
-                
-            else:    
-                action_prompt = f"""
-                Analyze the given short story and identify the character {character}'s primary role. 
-                Please provide only 5 concise bullet points that accurately describe their role, limit the roles to single/double words. **avoiding any specific names**. 
-                Use the provided role list as a guide, but feel free to suggest a new role if it better fits the character's actions and motivations within the story.
+    except Exception as e:
+        print(f"Error generating text: {e}")
+        return None
 
-                **Short story:**
-                {short_story}
 
-                **Role list:**
-                {role_list}
-                """
-                
-                
-                # action_prompt = f"""
-                # Analyze the given short story and identify the character {character}'s primary role. 
-                # Please provide only 5 concise bullet points that accurately describe their role, limit the roles to single/double words. **avoiding any specific names**. 
-                # Use the provided role list as a guide, but feel free to suggest a new role if it better fits the character's actions and motivations within the story.
-                
-                # **Short story:**
-                # {short_story}
 
-                # **Role list:**
-                # {role_list}
-                # """
+def generate_character_prompt(short_story):
+    """Generate the character identification prompt."""
+    # return f"Identify the significant characters in the following story:\n{short_story}"
+    return f"Identify only the main significant characters in the following story and return only their names in a list format, without any additional text or description:\n{short_story}"
 
-            try:
-                action_response = ut.test_text_gen_text_only_prompt(action_prompt)
-                actions = re.findall(r'\*\s+\*\*(.*?):\*\*', action_response)
-            except:
-                actions = []
-                print(actions)
-                
-            if actions is None:
-                actions = []
-                
-            if actions != []:    
-                actions_dict[character] = actions
-            # else:
-            #     characters.remove(character)
+
+def extract_characters(ut, short_story, model, pipe,client):
+    """Extract characters from the story based on the model."""
+    character_prompt = generate_character_prompt(short_story)
     
-    return characters, actions_dict
+    if model == "gemini":
+        character_response = ut.test_text_gen_text_only_prompt(character_prompt)
+    elif model == "llama3":
+        character_response = get_response_baseline(character_prompt, pipe, "")
+        characters = [x.split(":")[0][2:] for x in character_response.split("\n")][2:]
+    elif "gpt" in model:
+        character_response = generate_text_gpt(character_prompt, model,client)
+        # print(character_response)
+        # Step 1: Extract names and remove the bullet points (the '-')
+        characters = re.findall(r"- (.+)", character_response)
+
+        # Step 2: Remove duplicates by converting the list to a set
+        unique_names = list(set(characters))
+
+        # Step 3: Optionally, sort the names if needed
+        unique_names.sort()
+        characters = unique_names
+    
+    if character_response:
+        if model == "gemini":
+            return re.findall(r"\*\s+\*\*(.*?):\*\*", character_response)
+        else:
+            return characters
+    return []
+
+def generate_action_prompt(character, short_story, attribute_type, role_list):
+    """Generate the action or trait prompt for a specific character and attribute."""
+    if not role_list:
+        # return f"""
+        # Analyze the given short story and identify the character {character}'s primary {attribute_type}. 
+        # Please provide only 5 concise bullet points that accurately describe their {attribute_type}, limiting to single or double words without specific names.
+
+        # **Short story:**
+        # {short_story}
+        # """
+        return f"""
+        Analyze the given short story and identify the character {character}'s primary {attribute_type}. 
+        Please provide exactly 5 concise attributes in a list format. Each attribute should be a single or double word, without any specific names, descriptions, or extra text.
+
+        **Short story:**
+        {short_story}
+        """
+
+    else:
+        # return f"""
+        # Analyze the given short story and identify the character {character}'s primary {attribute_type}. 
+        # Please provide only 5 concise bullet points that accurately describe their {attribute_type}, limit {attribute_type}s to single/double words without specific names. 
+        # Use the provided {attribute_type} list as a guide, but suggest a new {attribute_type} if it better fits the character's actions and motivations within the story.
+
+        # **Short story:**
+        # {short_story}
+
+        # **{attribute_type} list:**
+        # {role_list}
+        # """
+        return f"""
+        Analyze the given short story and identify the character {character}'s primary {attribute_type}. 
+        Please provide exactly 5 concise attributes in a list format. Each attribute should be a single or double word, without any specific names, descriptions, or extra text.
+        Use the provided {attribute_type} list as a guide, but suggest a new {attribute_type} if it better fits the character's actions and motivations within the story.
+
+        **Short story:**
+        {short_story}
+
+        **{attribute_type} list:**
+        {role_list}
+        """
 
 
-# if __name__ == "__main__":
-#     ut = UnitTests()
-#     existing_functions = set()  # Keep track of functions (actions) found so far
+def generate_model_response(action_prompt, model, ut, pipe,client):
+    """Generate the model's response based on the action prompt."""
+    try:
+        if model == "gemini":
+            return ut.test_text_gen_text_only_prompt(action_prompt)
+        elif model == "llama3":
+            return get_response_baseline(action_prompt, pipe, "")
+        elif "gpt" in model:
+            return generate_text_gpt(action_prompt, model,client)
+    except Exception as e:
+        print(f"Error generating response: {e}")
+        return None
 
-#     with open('./character_actions_analysis_oct31_1.jsonl', 'w') as jsonl_file:
-#         for i in range(len(data)):  # Loop for multiple documents/stories
-#             # Step 1: Generate a short story
-#             movie = data[i]
-#             short_story = movie["Plot"]
-#             title = movie["Title"]
+def extract_actions(model, action_response):
+    """Extract actions from the model's response."""
+    if model == "gemini":
+        return re.findall(r"\*\s+\*\*(.*?):\*\*", action_response) if action_response else []
+    elif model=="llama3":
+        return [x[1:] for x in action_response.split("\n")[2:]] if action_response else []
+    elif "gpt" in model:
+        # Step 1: Extract the traits/roles by matching the text after the number
+        actions = re.findall(r"\d+\.\s+([A-Za-z]+)", action_response)
 
-#             # Step 2: Extract characters and their actions from the story
-#             characters, actions_dict = extract_characters_and_actions(ut, short_story,existing_functions)
-#             print("Characters:", characters)
-#             print("Actions:", actions_dict)
+        # Step 2: Remove extra spaces (if any) and ensure it's a clean list
+        actions = [trait.strip() for trait in actions]
 
-#             # Step 3: For the first document, record functions. For subsequent, compare and suggest new functions
-#             # if i == 0:
-#             existing_functions.update([action for actions in actions_dict.values() for action in actions])
-#             # else:
-#                 # updated_actions_dict = compare_functions(existing_functions, actions_dict, ut)
-#                 # print("Updated actions dict:", updated_actions_dict)
-#                 # existing_functions.update([action for actions in updated_actions_dict.values() for action in actions])
+        return actions
+def extract_characters_and_actions(ut, short_story, model, existing_functions, pipe=None, prompt=None,client=None):
+    """Extract characters and actions from a short story."""
+    # existing_functions = {'role': set(), 'action': set(), 'trait': set()} - for example - it can be different according to the prompt
+    characters = extract_characters(ut, short_story, model, pipe,client)
+    actions_dict = {}
+    
+    if characters:
+        
+        
+        # Step 2: Find actions associated with each character
+        for character in characters:
+            # print(character)
+            actions_dict[character] = {}
+            
+            for attribute_type in prompt:
+                action_prompt = generate_action_prompt(character, short_story, attribute_type, list(existing_functions[attribute_type]))
+                action_response = generate_model_response(action_prompt, model, ut, pipe,client)
+                actions = extract_actions(model, action_response)
+                
+                if actions:
+                    actions_dict[character][attribute_type] = actions  # Add to actions dictionary if actions were found
+                    # print(f"{character}[{attribute_type}]:{actions_dict[character][attribute_type]}")
+                    if attribute_type in existing_functions:
+                        existing_functions[attribute_type].update(actions)
+                   
+    return characters, actions_dict, existing_functions
 
-#             # Save the story and character action data to JSONL
-#             extracted_output = {
-#                 "title": title,
-#                 "plot": short_story,
-#                 "characters": characters,
-#                 "actions_dict": actions_dict,
-#                 "all_actions": list(existing_functions)
-#             }
-#             jsonl_file.write(json.dumps(extracted_output) + '\n')
 
-#     # absltest.main()
+# def extract_characters_and_actions(ut, short_story, model, role_list=[], pipe = None, prompt =None):
+#     characters = []
+#     actions_dict = {}
+        
+#     # Step 1: Find characters in the story
+#     character_prompt = "Identify the significant characters in the following story:\n" + short_story
+    
+#     # Generate character response based on model type
+#     if model == "gemini":
+#         character_response = ut.test_text_gen_text_only_prompt(character_prompt)
+#     elif model == "llama3":
+#         character_response = get_response_baseline(character_prompt, pipe, "")
+#         characters = [x.split(":")[0][2:] for x in character_response.split("\n")][2:]
+#         print(characters)
+#     elif model == "gpt-4":
+#         character_response = generate_text_gpt(character_prompt,model)
+    
+    
+#     if character_response:
+#         # Extract character names using regex
+#         if model=="gemini":
+#             characters = re.findall(r"\*\s+\*\*(.*?):\*\*", character_response)
+#         print(f"characters: {characters}")
+#         role_list = set(role_list)
+        
+#         # Step 2: Find actions associated with each character
+#         for character in characters:
+#             # Define the action prompt
+#             for attribute_type in prompt:
+#                 if not role_list:
+#                     action_prompt = f"""
+#                     Analyze the given short story and identify the character {character}'s primary {attribute_type}. 
+#                     Please provide only 5 concise bullet points that accurately describe their {attribute_type}, limiting to single or double words without specific names.
+
+#                     **Short story:**
+#                     {short_story}
+#                     """
+#                 else:
+#                     action_prompt = f"""
+#                     Analyze the given short story and identify the character {character}'s primary {attribute_type}. 
+#                     Please provide only 5 concise bullet points that accurately describe their {attribute_type}, limit {attribute_type}s to single/double words without specific names. 
+#                     Use the provided {attribute_type} list as a guide, but suggest a new {attribute_type} if it better fits the character's actions and motivations within the story.
+
+#                     **Short story:**
+#                     {short_story}
+
+#                     **{attribute_type} list:**
+#                     {role_list}
+#                     """
+                    
+#                 # Generate action response based on model type
+#                 try:
+#                     if model == "gemini":
+#                         action_response = ut.test_text_gen_text_only_prompt(action_prompt)
+#                     elif model == "llama3":
+#                         action_response = get_response_baseline(action_prompt, pipe, "")
+#                         actions = [x[1:] for x in action_response.split("\n")[2:]]
+#                         print(f"{character}:{actions}")
+                    
+#                     elif model == "gpt-4":
+#                         action_response = generate_text_gpt(action_prompt,model)
+#                         print(f"{character}:{actions}")
+                        
+                    
+#                     # Extract actions using regex if response is not None
+#                     if model=="gemini":
+#                         actions = re.findall(r"\*\s+\*\*(.*?):\*\*", action_response) if action_response else []
+                    
+#                 except Exception as e:
+#                     print(f"Error generating actions for {character}: {e}")
+#                     actions = []
+                    
+#                 if actions:
+#                     actions_dict[character][attribute_type] = actions  # Add to actions dictionary if actions were found
+    
+#     return characters, actions_dict
+
+
     
     
     
@@ -173,37 +315,56 @@ def extract_characters_and_actions(ut, short_story,role_list = []):
 def main():
     parser = argparse.ArgumentParser(description="Process a corpus using a language model.")
     parser.add_argument("--model", required=False, help="Name of the language model (e.g., GPT-4, Claude, Gemini)")
-    parser.add_argument("--corpus", required=True, help="Path to the corpus of story synopses")
-    parser.add_argument("--prompt", required=False, help="Prompt to generate content based on roles, traits, and actions")
+    parser.add_argument("--corpus", required=False, help="Path to the corpus of story synopses")
+    parser.add_argument("--prompt", required=False, default=["roles", "traits", "actions"], help="roles, traits, actions")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for deterministic traversal")
     parser.add_argument("--output_path", default="./output.jsonl", help="Path to save output data")
     
     args = parser.parse_args()
+    
+    print("CUDA available:", torch.cuda.is_available())
+    print("Number of GPUs:", torch.cuda.device_count())
+    if torch.cuda.is_available():
+        print("Current GPU:", torch.cuda.get_device_name(1))
 
     random.seed(args.seed)
     # data = []
-    with open(args.corpus, 'r') as file:
-        for line in file:
-            data.append(json.loads(line))
+    if args.corpus:
+        with open(args.corpus, 'r') as file:
+            for line in file:
+                data.append(json.loads(line))
 
-    ut = UnitTests()
-    existing_functions = set()
     
-    with open(args.output_path, 'w') as jsonl_file:
-        for i, movie in enumerate(data):
+    if "gpt" in args.model:
+        openai.api_key = os.environ.get("OPENAI_API_KEY")
+        # print(openai.api_key)
+        client = OpenAI()
+    ut = UnitTests()
+    pipe = None
+    if args.model == "llama3":
+        pipe = get_model_baseline("meta-llama/Meta-Llama-3-8B-Instruct")
+    if args.model=="gemini":
+        genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+    
+        
+    # existing_functions = set()
+    existing_functions = {x:set() for x in args.prompt}
+    with open(args.output_path.replace(".jsonl",f"_{args.seed}_.jsonl"), 'w') as jsonl_file:
+        for i, movie in enumerate(random.sample(data, len(data))):
             short_story = movie["Plot"]
             title = movie["Title"]
 
-            characters, actions_dict = extract_characters_and_actions(ut, short_story, existing_functions)
+            characters, actions_dict, existing_functions = extract_characters_and_actions(ut, short_story,args.model, existing_functions, pipe, args.prompt,client)
             if characters is not None and actions_dict!=[]:
-                existing_functions.update([action for actions in actions_dict.values() for action in actions])
+                # existing_functions.update([action for actions in actions_dict.values() for action in actions])
                 
                 extracted_output = {
                     "title": title,
-                    "plot": short_story,
                     "characters": characters,
                     "actions_dict": actions_dict,
-                    "all_actions": list(existing_functions)
+                    "all_actions": {k: list(v) for k, v in existing_functions.items()},
+                    "plot": short_story,
+                    
                 }
                 jsonl_file.write(json.dumps(extracted_output) + '\n')
 
