@@ -9,39 +9,91 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import spacy
+import openai
+from openai import OpenAI
+import joblib
+import os
 
-nlp = spacy.load("en_core_web_sm")
-word_vectors = api.load("word2vec-google-news-300")
-no_embeddings = set()
+# nlp = spacy.load("en_core_web_sm")
+# word_vectors = api.load("word2vec-google-news-300")
+# no_embeddings = set()
+
+
+# def get_embedding(phrase):
+#     doc = nlp(phrase)  
+#     embeddings = []
+
+#     for token in doc:
+#         if not token.is_stop and not token.is_punct:  
+#             try:
+#                 embeddings.append(word_vectors[token.text.lower()]) 
+#             except KeyError:
+#                 if token.text not in no_embeddings:
+#                     print(f"Warning: No embedding found for token '{token.text} in {phrase}'.")
+#                     no_embeddings.add(token.text)
+                
+#                 continue  
+
+#     return np.mean(embeddings, axis=0) if embeddings else np.zeros((300,)) 
+
+
+
+# client = OpenAI(os.getenv("OPENAI_API_KEY"))
+
+openai.api_key = os.environ.get("OPENAI_API_KEY")
+client = OpenAI()
+
+def get_embedding(text, model="text-embedding-ada-002"):
+   text = text.replace("\n", " ")
+   return client.embeddings.create(input = [text], model=model).data[0].embedding
+
+
+def get_embedding_efficient(text):
+    embedding_cache = load_or_create_embedding_cache()
+    if text in embedding_cache:
+        return embedding_cache[text]
+    else:
+        embedding = get_embedding(text)
+        embedding_cache[text] = embedding
+        joblib.dump(embedding_cache, "/data/naghmeh/text-embedding-ada-002/word_embeddings.pkl")
+        return embedding
+
+def load_or_create_embedding_cache(filename="/data/naghmeh/text-embedding-ada-002/word_embeddings.pkl"):
+    try:
+        return joblib.load(filename)
+    except FileNotFoundError:
+        return {}
+
+
+
+def argmax_cosine_sim(role, global_roles):
+    role_embedding = get_embedding_efficient(role)
+    max_similarity = 0
+    most_similar_word = ""
+
+    for global_role in global_roles:
+        global_role_embedding = get_embedding_efficient(global_role)
+        similarity = cosine_similarity([role_embedding], [global_role_embedding])[0][0]
+        if similarity > max_similarity:
+            max_similarity = similarity
+            most_similar_word = global_role
+
+    return most_similar_word
+
+
+# print(argmax_cosine_sim("tutor", ["guide","sacrificer","protector"]))
+
 
 def jaccard_similarity(roles1, roles2):
     mlb = MultiLabelBinarizer()
     binary_matrix = mlb.fit_transform([roles1, roles2])
     return jaccard_score(binary_matrix[0], binary_matrix[1], average='micro')
 
-def get_embedding(phrase):
-    doc = nlp(phrase)  
-    embeddings = []
-
-    for token in doc:
-        if not token.is_stop and not token.is_punct:  
-            try:
-                embeddings.append(word_vectors[token.text.lower()]) 
-            except KeyError:
-                if token.text not in no_embeddings:
-                    print(f"Warning: No embedding found for token '{token.text} in {phrase}'.")
-                    no_embeddings.add(token.text)
-                
-                continue  
-
-    return np.mean(embeddings, axis=0) if embeddings else np.zeros((300,)) 
-
-
 def old_cosine_sim(roles1, roles2):
     similarities = []
     for role1 in roles1:
-        role1_vec = get_embedding(role1)
-        max_sim = max([cosine_similarity([role1_vec], [get_embedding(role2)])[0][0] for role2 in roles2])
+        role1_vec = get_embedding_efficient(role1)
+        max_sim = max([cosine_similarity([role1_vec], [get_embedding_efficient(role2)])[0][0] for role2 in roles2])
         similarities.append(max_sim)
     return np.max(similarities)
 
@@ -49,10 +101,13 @@ def old_cosine_sim(roles1, roles2):
 def cosine_sim(roles1, roles2):
     similarities = []
     for role1 in roles1:
-        role1_vec = get_embedding(role1)
-        max_sim = max([cosine_similarity([role1_vec], [get_embedding(role2)])[0][0] for role2 in roles2])
+        role1_vec = get_embedding_efficient(role1)
+        max_sim = max([cosine_similarity([role1_vec], [get_embedding_efficient(role2)])[0][0] for role2 in roles2])
         similarities.append(max_sim)
     return np.mean(similarities)
+
+
+
 
 
 def compare_movies(movie1, movie2):
@@ -96,14 +151,6 @@ def load_movies(file_path):
     return movies
 
 
-movie_file_name = '/extract_results/1k_movie_oct31.jsonl'
-movies = load_movies(movie_file_name)
-similarities = compare_all_movies(movies)
-# Print similarities for each character comparison
-for movie_pair, char_similarities in similarities.items():
-    print(f"\nComparisons for {movie_pair}:")
-    for chars, sims in char_similarities.items():
-        print(f"{chars}: Jaccard: {sims['Jaccard']:.3f}, Cosine: {sims['Cosine']:.3f}")
 
 
 def save_similarities_to_csv(similarities, filename):
@@ -120,11 +167,12 @@ def save_similarities_to_csv(similarities, filename):
     df = pd.DataFrame(data)
     df.to_csv(filename, index=False)
 
-save_similarities_to_csv(similarities, 'similarities.csv')
 
 
 
-def create_character_heatmap(similarities, metric='Jaccard'):
+
+
+def create_character_heatmap(movie_file_name,similarities, metric='Jaccard'):
     heatmap_data = {}
 
     for movie_pair, char_similarities in similarities.items():
@@ -151,6 +199,21 @@ def create_character_heatmap(similarities, metric='Jaccard'):
 
     # plt.show()
 
-create_character_heatmap(similarities, metric='Jaccard')
 
-create_character_heatmap(similarities, metric='Cosine')
+def sim_measure(movie_file_name):
+    movies = load_movies(movie_file_name)
+    similarities = compare_all_movies(movies)
+    # Print similarities for each character comparison
+    for movie_pair, char_similarities in similarities.items():
+        print(f"\nComparisons for {movie_pair}:")
+        for chars, sims in char_similarities.items():
+            print(f"{chars}: Jaccard: {sims['Jaccard']:.3f}, Cosine: {sims['Cosine']:.3f}")
+
+    save_similarities_to_csv(similarities, 'similarities.csv')
+    create_character_heatmap(movie_file_name, similarities, metric='Jaccard')
+
+    create_character_heatmap(movie_file_name, similarities, metric='Cosine')
+
+
+# movie_file_name = '/extract_results/1k_movie_oct31.jsonl'
+# sim_measure(movie_file_name)

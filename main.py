@@ -4,7 +4,6 @@ from google.api_core.exceptions import ResourceExhausted
 from model_utils import get_model_baseline
 import torch
 
-import os
 import re
 import json
 import argparse
@@ -15,6 +14,8 @@ from llm import get_response_baseline
 
 import openai
 from openai import OpenAI
+from similarity import argmax_cosine_sim
+import os
 
 # client = None
 
@@ -69,28 +70,27 @@ import re
 
 
 
-def generate_text_gpt(prompt, model="gpt-4o-mini", max_tokens=100, temperature=0.7,client=None):
-    openai.api_key = os.environ.get("OPENAI_API_KEY")
-    client = OpenAI()
+def generate_text_gpt(prompt, model, max_tokens=100, temperature=0.7,client=None):
+    print(prompt)
     try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
-        )
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}]
-        )
-        generated_text = response.choices[0].message.content
-        # print(f"generate text is : {generated_text}")
-        return generated_text
+        generated_text=""
+        while generated_text=="":
+            time.sleep(2)
+            # Set your OpenAI API Key
+            client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
+            response = client.completions.create(
+                model=model,
+                prompt = prompt,
+                temperature=0,
+                max_tokens=350
+            )
+
+            
+            
+            generated_text = response.choices[0].text.strip()
+            print(f"generate text is :\n {generated_text}")
+        return generated_text
     except Exception as e:
         print(f"Error generating text: {e}")
         return None
@@ -103,7 +103,7 @@ def generate_character_prompt(short_story):
     return f"Identify only the main significant characters in the following story and return only their names in a list format, without any additional text or description:\n{short_story}"
 
 
-def extract_characters(ut, short_story, model, pipe,client):
+def extract_characters(ut, short_story, model, pipe,client,temperature):
     """Extract characters from the story based on the model."""
     character_prompt = generate_character_prompt(short_story)
     
@@ -113,10 +113,14 @@ def extract_characters(ut, short_story, model, pipe,client):
         character_response = get_response_baseline(character_prompt, pipe, "")
         characters = [x.split(":")[0][2:] for x in character_response.split("\n")][2:]
     elif "gpt" in model:
-        character_response = generate_text_gpt(character_prompt, model,client)
+        character_response = generate_text_gpt(character_prompt, model,client, temperature=temperature)
         # print(character_response)
         # Step 1: Extract names and remove the bullet points (the '-')
-        characters = re.findall(r"- (.+)", character_response)
+        # Regular expression that works for both formats
+        characters = re.findall(r"^\d+\.\s*(.+)$|^\-\s*(.+)$", character_response, re.MULTILINE)
+        
+        # The regular expression will return tuples, so we flatten them to get the names.
+        characters = [char for group in characters for char in group if char]
 
         # Step 2: Remove duplicates by converting the list to a set
         unique_names = list(set(characters))
@@ -135,13 +139,6 @@ def extract_characters(ut, short_story, model, pipe,client):
 def generate_action_prompt(character, short_story, attribute_type, role_list):
     """Generate the action or trait prompt for a specific character and attribute."""
     if not role_list:
-        # return f"""
-        # Analyze the given short story and identify the character {character}'s primary {attribute_type}. 
-        # Please provide only 5 concise bullet points that accurately describe their {attribute_type}, limiting to single or double words without specific names.
-
-        # **Short story:**
-        # {short_story}
-        # """
         return f"""
         Analyze the given short story and identify the character {character}'s primary {attribute_type}. 
         Please provide exactly 5 concise attributes in a list format. Each attribute should be a single or double word, without any specific names, descriptions, or extra text.
@@ -151,17 +148,7 @@ def generate_action_prompt(character, short_story, attribute_type, role_list):
         """
 
     else:
-        # return f"""
-        # Analyze the given short story and identify the character {character}'s primary {attribute_type}. 
-        # Please provide only 5 concise bullet points that accurately describe their {attribute_type}, limit {attribute_type}s to single/double words without specific names. 
-        # Use the provided {attribute_type} list as a guide, but suggest a new {attribute_type} if it better fits the character's actions and motivations within the story.
-
-        # **Short story:**
-        # {short_story}
-
-        # **{attribute_type} list:**
-        # {role_list}
-        # """
+        print(f"global list:{role_list}")
         return f"""
         Analyze the given short story and identify the character {character}'s primary {attribute_type}. 
         Please provide exactly 5 concise attributes in a list format. Each attribute should be a single or double word, without any specific names, descriptions, or extra text.
@@ -175,7 +162,7 @@ def generate_action_prompt(character, short_story, attribute_type, role_list):
         """
 
 
-def generate_model_response(action_prompt, model, ut, pipe,client):
+def generate_model_response(action_prompt, model, ut, pipe,client,temperature):
     """Generate the model's response based on the action prompt."""
     try:
         if model == "gemini":
@@ -183,7 +170,7 @@ def generate_model_response(action_prompt, model, ut, pipe,client):
         elif model == "llama3":
             return get_response_baseline(action_prompt, pipe, "")
         elif "gpt" in model:
-            return generate_text_gpt(action_prompt, model,client)
+            return generate_text_gpt(action_prompt, model,client,temperature=temperature)
     except Exception as e:
         print(f"Error generating response: {e}")
         return None
@@ -202,10 +189,10 @@ def extract_actions(model, action_response):
         actions = [trait.strip() for trait in actions]
 
         return actions
-def extract_characters_and_actions(ut, short_story, model, existing_functions, pipe=None, prompt=None,client=None):
+def extract_characters_and_actions(ut, short_story, model, existing_functions,temperature, pipe=None, prompt=None,client=None):
     """Extract characters and actions from a short story."""
     # existing_functions = {'role': set(), 'action': set(), 'trait': set()} - for example - it can be different according to the prompt
-    characters = extract_characters(ut, short_story, model, pipe,client)
+    characters = extract_characters(ut, short_story, model, pipe,client,temperature=temperature)
     actions_dict = {}
     
     if characters:
@@ -218,7 +205,7 @@ def extract_characters_and_actions(ut, short_story, model, existing_functions, p
             
             for attribute_type in prompt:
                 action_prompt = generate_action_prompt(character, short_story, attribute_type, list(existing_functions[attribute_type]))
-                action_response = generate_model_response(action_prompt, model, ut, pipe,client)
+                action_response = generate_model_response(action_prompt, model, ut, pipe,client,temperature=temperature)
                 actions = extract_actions(model, action_response)
                 
                 if actions:
@@ -229,87 +216,110 @@ def extract_characters_and_actions(ut, short_story, model, existing_functions, p
                    
     return characters, actions_dict, existing_functions
 
+def merge_replace_or_add_output_parsing(text):
+    # Updated pattern to handle the specific format you showed
+    pattern = r"\*{0,2}Decision:\*{0,2}\s*(\w+\s*\w*)\s*\*{0,2}Explanation:\*{0,2}\s*(.*?)\s*\*{0,2}Suggested\s*\w+:\*{0,2}\s*(.*)"
 
-# def extract_characters_and_actions(ut, short_story, model, role_list=[], pipe = None, prompt =None):
-#     characters = []
-#     actions_dict = {}
+    match = re.search(pattern, text, re.DOTALL)
+
+    if match:
+        decision = match.group(1)
+        explanation = match.group(2).strip()
+        suggested = match.group(3).strip() if match.group(3) else "None"
+    print("""***********""")
+    print(f"Decision: {decision}")
+    print(f"Explanation: {explanation}")
+    print(f"Suggested: {suggested}")
+    print("""------------""")
+    
+    
+    return decision, explanation, suggested
+    
+def merge_replace_or_add(actions,attribute_type_existing_functions, attribute_type, model, client,temperature, changes_in_global_list={},merge_action_over_global=0, merge_global_over_action=0, merge_new=0, kept_separate=0):
+    for i, action in enumerate(actions):
+        potential = argmax_cosine_sim(action,attribute_type_existing_functions)
+        prompt = f"""Name of this project is "MERGE IF POSSIBLE". I have two {attribute_type}s: "{action}" and "{potential}".
+
+Merging Guidelines:
+- Analyze semantic, functional, and contextual similarities
+- Identify substantial conceptual overlap
+- Consider a more comprehensive understanding through merging
+- Reduce unnecessary distinctions while preserving critical nuance
+
+Evaluation Criteria:
+1. >80% similarity: Merge strongly
+2. 50-80% similarity: Carefully evaluate differences
+3. <50% similarity: Keep separate
+
+Decision Framework:
+- Merge: Combine if substantially similar
+- Keep Separate: Retain if meaningful differences exist
+
+Output Structure:
+Decision: [Merge/Keep Separate]
+Explanation: [Concise reasoning]
+Suggested {attribute_type}: [Comprehensive term or "None"]
+
+Critical Instruction: Prioritize meaningful categorization for clarity and insight, avoiding unnecessary complexity."""
+
         
-#     # Step 1: Find characters in the story
-#     character_prompt = "Identify the significant characters in the following story:\n" + short_story
-    
-#     # Generate character response based on model type
-#     if model == "gemini":
-#         character_response = ut.test_text_gen_text_only_prompt(character_prompt)
-#     elif model == "llama3":
-#         character_response = get_response_baseline(character_prompt, pipe, "")
-#         characters = [x.split(":")[0][2:] for x in character_response.split("\n")][2:]
-#         print(characters)
-#     elif model == "gpt-4":
-#         character_response = generate_text_gpt(character_prompt,model)
-    
-    
-#     if character_response:
-#         # Extract character names using regex
-#         if model=="gemini":
-#             characters = re.findall(r"\*\s+\*\*(.*?):\*\*", character_response)
-#         print(f"characters: {characters}")
-#         role_list = set(role_list)
         
-#         # Step 2: Find actions associated with each character
-#         for character in characters:
-#             # Define the action prompt
-#             for attribute_type in prompt:
-#                 if not role_list:
-#                     action_prompt = f"""
-#                     Analyze the given short story and identify the character {character}'s primary {attribute_type}. 
-#                     Please provide only 5 concise bullet points that accurately describe their {attribute_type}, limiting to single or double words without specific names.
-
-#                     **Short story:**
-#                     {short_story}
-#                     """
-#                 else:
-#                     action_prompt = f"""
-#                     Analyze the given short story and identify the character {character}'s primary {attribute_type}. 
-#                     Please provide only 5 concise bullet points that accurately describe their {attribute_type}, limit {attribute_type}s to single/double words without specific names. 
-#                     Use the provided {attribute_type} list as a guide, but suggest a new {attribute_type} if it better fits the character's actions and motivations within the story.
-
-#                     **Short story:**
-#                     {short_story}
-
-#                     **{attribute_type} list:**
-#                     {role_list}
-#                     """
-                    
-#                 # Generate action response based on model type
-#                 try:
-#                     if model == "gemini":
-#                         action_response = ut.test_text_gen_text_only_prompt(action_prompt)
-#                     elif model == "llama3":
-#                         action_response = get_response_baseline(action_prompt, pipe, "")
-#                         actions = [x[1:] for x in action_response.split("\n")[2:]]
-#                         print(f"{character}:{actions}")
-                    
-#                     elif model == "gpt-4":
-#                         action_response = generate_text_gpt(action_prompt,model)
-#                         print(f"{character}:{actions}")
-                        
-                    
-#                     # Extract actions using regex if response is not None
-#                     if model=="gemini":
-#                         actions = re.findall(r"\*\s+\*\*(.*?):\*\*", action_response) if action_response else []
-                    
-#                 except Exception as e:
-#                     print(f"Error generating actions for {character}: {e}")
-#                     actions = []
-                    
-#                 if actions:
-#                     actions_dict[character][attribute_type] = actions  # Add to actions dictionary if actions were found
+        print(f"\n\nPROMPT:{prompt}\n")
+        output = generate_text_gpt(prompt, model,client, temperature=temperature)
+        decision, explanation, suggested_action  = merge_replace_or_add_output_parsing(output)
+        print(f"\nOUTPUT:{output}\n")
+        if decision.lower() == "merge":
+            if suggested_action == potential:
+                merge_global_over_action+=1
+                actions[i] = potential
+            elif suggested_action == action:
+                merge_action_over_global+=1
+                attribute_type_existing_functions = list(map(lambda x: x.replace(potential, suggested_action), attribute_type_existing_functions))
+                changes_in_global_list[potential]=suggested_action # at the end we can merge all the changes that are one after another, to one.
+            else:
+                merge_new+=1
+                actions[i] = potential
+                attribute_type_existing_functions = list(map(lambda x: x.replace(potential, suggested_action), attribute_type_existing_functions))
+                changes_in_global_list[potential]=suggested_action # at the end we can merge all the changes that are one after another, to one.
+        else:
+            kept_separate+=1
+    return actions, attribute_type_existing_functions, changes_in_global_list, decision, explanation, suggested_action, merge_action_over_global, merge_global_over_action, merge_new, kept_separate
+                
+            
+  
     
-#     return characters, actions_dict
+def extract_characters_and_actions_with_merging(ut, short_story, model, existing_functions,temperature, pipe=None, prompt=None,client=None):
+    """Extract characters and actions from a short story."""
+    # existing_functions = {'role': set(), 'action': set(), 'trait': set()} - for example - it can be different according to the prompt
+    characters = extract_characters(ut, short_story, model, pipe,client,temperature=temperature)
+    actions_dict = {}
+    changes_in_global_list = {}
+    merge_action_over_global, merge_global_over_action, merge_new, kept_separate = 0,0,0,0
+    all_changes_as_variables_in_a_list = []
+    if characters:
+        
+        
+        # Step 2: Find actions associated with each character
+        for i,character in enumerate(characters):
+            print(f"character:{character}")
+            actions_dict[character] = {}
+            
+            for attribute_type in prompt:
+                action_prompt = generate_action_prompt(character, short_story, attribute_type, list(existing_functions[attribute_type]))
+                action_response = generate_model_response(action_prompt, model, ut, pipe,client,temperature=temperature)
+                actions = extract_actions(model, action_response)
+                if len(existing_functions[attribute_type])>0:
+                    actions, existing_functions[attribute_type], changes_in_global_list, decision, explanation, suggested_action, merge_action_over_global, merge_global_over_action, merge_new, kept_separate = merge_replace_or_add(actions,existing_functions[attribute_type],attribute_type, model,client,temperature,changes_in_global_list,merge_action_over_global, merge_global_over_action, merge_new, kept_separate)
+                    all_changes_as_variables_in_a_list.append({"turn":i,"merge_action_over_global":merge_action_over_global, "merge_global_over_action":merge_global_over_action, "merge_new":merge_new, "kept_separate":kept_separate})
+                if actions:
+                    actions_dict[character][attribute_type] = actions  # Add to actions dictionary if actions were found
+                    print(f"{character}[{attribute_type}]:{actions_dict[character][attribute_type]}")
+                    if attribute_type in existing_functions:
+                        existing_functions[attribute_type].update(actions)
+                   
+    return characters, actions_dict, existing_functions, changes_in_global_list, decision, explanation, suggested_action, all_changes_as_variables_in_a_list
 
-
-    
-    
+        
     
 
 def main():
@@ -319,13 +329,14 @@ def main():
     parser.add_argument("--prompt", required=False, default=["roles", "traits", "actions"], help="roles, traits, actions")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for deterministic traversal")
     parser.add_argument("--output_path", default="./output.jsonl", help="Path to save output data")
-    
+    parser.add_argument("--merge", default = False, action="store_true", help="if you want to merge extracted actions if similar.")
+    parser.add_argument("--temperature",default=42, type=int, help="temperature of the model.")
     args = parser.parse_args()
     
-    print("CUDA available:", torch.cuda.is_available())
-    print("Number of GPUs:", torch.cuda.device_count())
-    if torch.cuda.is_available():
-        print("Current GPU:", torch.cuda.get_device_name(1))
+    # print("CUDA available:", torch.cuda.is_available())
+    # print("Number of GPUs:", torch.cuda.device_count())
+    # if torch.cuda.is_available():
+    #     print("Current GPU:", torch.cuda.get_device_name(1))
 
     random.seed(args.seed)
     # data = []
@@ -353,20 +364,38 @@ def main():
         for i, movie in enumerate(random.sample(data, len(data))):
             short_story = movie["Plot"]
             title = movie["Title"]
-
-            characters, actions_dict, existing_functions = extract_characters_and_actions(ut, short_story,args.model, existing_functions, pipe, args.prompt,client)
-            if characters is not None and actions_dict!=[]:
-                # existing_functions.update([action for actions in actions_dict.values() for action in actions])
-                
-                extracted_output = {
-                    "title": title,
-                    "characters": characters,
-                    "actions_dict": actions_dict,
-                    "all_actions": {k: list(v) for k, v in existing_functions.items()},
-                    "plot": short_story,
+            if args.merge == True:
+                characters, actions_dict, existing_functions, changes_in_global_list, decision, explanation, suggested_action, all_changes_as_variables_in_a_list = extract_characters_and_actions_with_merging(ut, short_story,args.model, existing_functions,args.temperature, pipe, args.prompt,client)
+                if characters is not None and actions_dict!=[]:
+                    # existing_functions.update([action for actions in actions_dict.values() for action in actions])
                     
-                }
-                jsonl_file.write(json.dumps(extracted_output) + '\n')
+                    extracted_output = {
+                        "title": title,
+                        "characters": characters,
+                        "actions_dict": actions_dict,
+                        "all_actions": {k: list(v) for k, v in existing_functions.items()},
+                        "plot": short_story,
+                        "changes_in_global_list": changes_in_global_list,
+                        "decision": decision,
+                        "explanation":explanation,
+                        "suggested_action":suggested_action,
+                        "all_changes_as_variables_in_a_list":all_changes_as_variables_in_a_list
+                        
+                    }
+            else:
+                characters, actions_dict, existing_functions = extract_characters_and_actions(ut, short_story,args.model, existing_functions,args.temperature, pipe, args.prompt,client)
+                if characters is not None and actions_dict!=[]:
+                    # existing_functions.update([action for actions in actions_dict.values() for action in actions])
+                    
+                    extracted_output = {
+                        "title": title,
+                        "characters": characters,
+                        "actions_dict": actions_dict,
+                        "all_actions": {k: list(v) for k, v in existing_functions.items()},
+                        "plot": short_story,
+                        
+                    }
+            jsonl_file.write(json.dumps(extracted_output, indent=4, ensure_ascii=False) + '\n')
 
     print(f"Processing complete. Output saved to {args.output_path}.")
 
