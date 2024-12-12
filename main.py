@@ -16,6 +16,7 @@ import openai
 from openai import OpenAI
 from similarity import argmax_cosine_sim
 import os
+from prompts import merge_prompt
 
 # client = None
 
@@ -220,21 +221,18 @@ def extract_characters_and_actions(ut, short_story, model, existing_functions,te
 import re
 
 def merge_replace_or_add_output_parsing(text):
-    # Regex pattern to match the three sections: Decision, Rationale, and Recommended Term
     
-    
-    # Set default values in case no match is found
-    # decision = "No Decision"
-    # rationale = "No Rationale"
-    # recommended_term = "None"
-    
-    pattern = r"(.*)\s*- Decision:\s*(.*?-)\s*- Rationale:\s*(.*?-)\s*- Recommended Term:\s*(.*)"
+    # regex pattern
+    pattern = r"Decision:\s*(?P<decision>.*?)\s*Rationale:\s*(?P<rationale>.*?)\s*Recommended Term:\s*(?P<recommended_term>.*)"
+
+    # Perform the regex match
     match = re.search(pattern, text, re.DOTALL)
 
+    # Extract the captured groups if there is a match
     if match:
-        decision = match.group(1).strip()
-        rationale = match.group(2).strip()
-        recommended_term = match.group(3).strip()
+        decision = match.group("decision")
+        rationale = match.group("rationale")
+        recommended_term = match.group("recommended_term")
         # Printing the structured output
         print("***********")
         print(f"Decision: {decision}")
@@ -254,21 +252,24 @@ def merge_replace_or_add(actions,attribute_type_existing_functions, attribute_ty
         if action not in attribute_type_existing_functions:
             potential = argmax_cosine_sim(action,attribute_type_existing_functions)
             print(f"ACRION:{action}, POTENTIAL:{potential}\n")
-            prompt = f"""
-            Task: Compare the terms "{action}" and "{potential}" within the context of {attribute_type}.  
+#             prompt = f"""
+#             Task: Compare the terms "{action}" and "{potential}" within the context of {attribute_type}.  
 
-Evaluation:  
-1. Are the terms distinct, overlapping, or synonymous?  
-2. Should they be merged or kept separate?  
+# Evaluation:  
+# 1. Are the terms distinct, overlapping, or synonymous?  
+# 2. Should they be merged or kept separate?  
 
-Output:  
-- Decision: [Merge / Keep Separate]  
-- Rationale: Briefly explain your reasoning (1-2 sentences).  
-- Recommended Term: Recommend either one of the original terms or propose a new term that better encompasses both. If separate, state "None"  
+# Output:  
+# - Decision: [Merge / Keep Separate]  
+# - Rationale: Briefly explain your reasoning (1-2 sentences).  
+# - Recommended Term: Recommend either one of the original terms or propose a new term that better encompasses both. If separate, state "None"  
 
-Keep the explanation concise and focused on clarity.  
+# Keep the explanation concise and focused on clarity.  
 
-            """
+#             """
+            prompt = merge_prompt.format(action=action, potential=potential, attribute_type=attribute_type)
+
+
             # print(f"\n\nPROMPT:{prompt}\n")
             output = generate_text_gpt(prompt, model,client, temperature=temperature)
             decision, explanation, suggested_action  = merge_replace_or_add_output_parsing(output)
@@ -315,14 +316,14 @@ Keep the explanation concise and focused on clarity.
             
   
     
-def extract_characters_and_actions_with_merging(ut, short_story, model, existing_functions,temperature, pipe=None, prompt=None,client=None):
+def extract_characters_and_actions_with_merging(ut, short_story, model, existing_functions,temperature, pipe=None, prompt=None,client=None,merge_action_over_global=0, merge_global_over_action=0, merge_new=0, kept_separate=0, used_from_existing_functions=0):
     """Extract characters and actions from a short story."""
     # existing_functions = {'role': set(), 'action': set(), 'trait': set()} - for example - it can be different according to the prompt
     characters = extract_characters(ut, short_story, model, pipe,client,temperature=temperature)
     actions_dict = {}
     all_dicisions, turn = {},{}
     changes_in_global_list = {}
-    merge_action_over_global, merge_global_over_action, merge_new, kept_separate, used_from_existing_functions = 0, 0, 0, 0, 0
+    # merge_action_over_global, merge_global_over_action, merge_new, kept_separate, used_from_existing_functions = 0, 0, 0, 0, 0
     all_changes_as_variables_in_a_list = []
     if characters:
         
@@ -336,6 +337,8 @@ def extract_characters_and_actions_with_merging(ut, short_story, model, existing
                 action_prompt = generate_action_prompt(character, short_story, attribute_type, list(existing_functions[attribute_type]))
                 action_response = generate_model_response(action_prompt, model, ut, pipe,client,temperature=temperature)
                 actions = extract_actions(model, action_response)
+                turn = {"turn":i,"merge_action_over_global":merge_action_over_global, "merge_global_over_action":merge_global_over_action, "merge_new":merge_new, "kept_separate":kept_separate,"used_from_existing_functions":used_from_existing_functions}
+                
                 if len(existing_functions[attribute_type])>0:
                     actions, existing_functions[attribute_type], changes_in_global_list, decision, explanation, suggested_action, merge_action_over_global, merge_global_over_action, merge_new, kept_separate,used_from_existing_functions, all_dicisions = merge_replace_or_add(actions,existing_functions[attribute_type],attribute_type, model,client,temperature,changes_in_global_list,merge_action_over_global, merge_global_over_action, merge_new, kept_separate,used_from_existing_functions)
                     turn = {"turn":i,"merge_action_over_global":merge_action_over_global, "merge_global_over_action":merge_global_over_action, "merge_new":merge_new, "kept_separate":kept_separate,"used_from_existing_functions":used_from_existing_functions}
@@ -349,12 +352,12 @@ def extract_characters_and_actions_with_merging(ut, short_story, model, existing
                         actions_dict[character][attribute_type]["numerical data"]= turn
                     else:
                         actions_dict[character][attribute_type]["merging changes"] = {}
-                        actions_dict[character][attribute_type]["numerical data"]= {}
+                        actions_dict[character][attribute_type]["numerical data"]= turn
                     print(f"{character}[{attribute_type}]:{actions_dict[character][attribute_type]}")
                     if attribute_type in existing_functions:
                         existing_functions[attribute_type].update(actions)
                    
-    return characters, actions_dict, existing_functions, changes_in_global_list
+    return characters, actions_dict, existing_functions, changes_in_global_list, merge_action_over_global, merge_global_over_action, merge_new, kept_separate, used_from_existing_functions
 
         
     
@@ -411,12 +414,16 @@ def main():
         
     # existing_functions = set()
     existing_functions = {x:set() for x in args.prompt}
-    with open(args.output_path.replace(".jsonl",f"_{args.seed}_.jsonl"), 'w') as jsonl_file:
+    merge_action_over_global, merge_global_over_action, merge_new, kept_separate, used_from_existing_functions = 0, 0, 0, 0, 0
+    
+    # with open(args.output_path.replace(".jsonl",f"_{args.seed}_.jsonl"), 'w') as jsonl_file:
+    with open(args.output_path.replace(".jsonl", f"_{args.seed}_beautify.jsonl"), 'w') as jsonl_file, \
+     open(args.output_path.replace(".jsonl", f"_{args.seed}_.jsonl"), 'w') as jsonl_fomatted_file:
         for i, movie in enumerate(random.sample(data, len(data))):
             short_story = movie["Plot"]
             title = movie["Title"]
             if args.merge == True:
-                characters, actions_dict, existing_functions, changes_in_global_list = extract_characters_and_actions_with_merging(ut, short_story,args.model, existing_functions,args.temperature, pipe, args.prompt,client)
+                characters, actions_dict, existing_functions, changes_in_global_list,merge_action_over_global, merge_global_over_action, merge_new, kept_separate, used_from_existing_functions = extract_characters_and_actions_with_merging(ut, short_story,args.model, existing_functions,args.temperature, pipe, args.prompt,client,merge_action_over_global, merge_global_over_action, merge_new, kept_separate, used_from_existing_functions)
                 if characters is not None and actions_dict!=[]:
                     # existing_functions.update([action for actions in actions_dict.values() for action in actions])
                     
@@ -444,6 +451,7 @@ def main():
                     }
             
             jsonl_file.write(json.dumps(convert_sets_to_lists(extracted_output), indent=4, ensure_ascii=False) + '\n')
+            jsonl_fomatted_file.write(json.dumps(convert_sets_to_lists(extracted_output)) + '\n')
 
             
     print(f"Processing complete. Output saved to {args.output_path}.")
