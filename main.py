@@ -221,15 +221,15 @@ import re
 
 def merge_replace_or_add_output_parsing(text):
     # Regex pattern to match the three sections: Decision, Rationale, and Recommended Term
-    pattern = r"""Decision:\s*(.+?)\nRationale:\s*(.+?)\nRecommended Term:\s*(.+)"""
+    pattern = r"""Decision:\s*(.+?)\s*Rationale:\s*(.+?)\s*Recommended Term:\s*(.+?)"""
     
     # Perform regex search using DOTALL for multiline handling
     match = re.search(pattern, text, re.DOTALL | re.VERBOSE)
     
     # Set default values in case no match is found
-    decision = "No Decision"
-    rationale = "No Rationale"
-    recommended_term = "None"
+    # decision = "No Decision"
+    # rationale = "No Rationale"
+    # recommended_term = "None"
     
     if match:
         # Extracting the matched groups
@@ -307,7 +307,7 @@ Keep the explanation concise and focused on clarity.
             {
                "term":action,
                "potential":potential,
-               "all existing list":attribute_type_existing_functions,
+               "all existing list":list(attribute_type_existing_functions),
                "attribute type": attribute_type,
                "decision":  decision,
                "explanation": explanation,
@@ -365,12 +365,19 @@ def extract_characters_and_actions_with_merging(ut, short_story, model, existing
     
 def convert_sets_to_lists(obj):
     if isinstance(obj, set):
+        # Convert set to list
         return list(obj)
     elif isinstance(obj, dict):
+        # Recurse through dictionary values
         return {k: convert_sets_to_lists(v) for k, v in obj.items()}
     elif isinstance(obj, list):
+        # Recurse through list elements
         return [convert_sets_to_lists(item) for item in obj]
-    return obj
+    else:
+        # If it's neither a set, dict, nor list, return as is
+        return obj
+
+
 def main():
     parser = argparse.ArgumentParser(description="Process a corpus using a language model.")
     parser.add_argument("--model", required=False, help="Name of the language model (e.g., GPT-4, Claude, Gemini)")
@@ -441,7 +448,7 @@ def main():
                         
                     }
             
-            jsonl_file.write(json.dumps(extracted_output, indent=4, ensure_ascii=False) + '\n')
+            jsonl_file.write(json.dumps(convert_sets_to_lists(extracted_output), indent=4, ensure_ascii=False) + '\n')
 
             
     print(f"Processing complete. Output saved to {args.output_path}.")
