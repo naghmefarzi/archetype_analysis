@@ -255,6 +255,7 @@ def merge_replace_or_add(actions,attribute_type_existing_functions, attribute_ty
     print("MERGE REPLACE OR ADD\n")
     all_dicisions=[]
     # print(f"ACTIONS:{actions}\n")
+    potential=""
     for i, action in enumerate(actions):
         if action not in attribute_type_existing_functions:
             potential = argmax_cosine_sim(action,attribute_type_existing_functions)
@@ -306,6 +307,7 @@ Keep the explanation concise and focused on clarity.
             {
                "term":action,
                "potential":potential,
+               "all existing list":attribute_type_existing_functions,
                "attribute type": attribute_type,
                "decision":  decision,
                "explanation": explanation,
@@ -348,10 +350,10 @@ def extract_characters_and_actions_with_merging(ut, short_story, model, existing
                         actions_dict[character][attribute_type]={}
                     actions_dict[character][attribute_type]["values"] = actions  # Add to actions dictionary if actions were found
                     if len(existing_functions[attribute_type])>0:
-                        actions_dict[character][attribute_type]["merging changes"] = {"all_dicisions":all_dicisions}
+                        actions_dict[character][attribute_type]["merging changes"] = all_dicisions
                         actions_dict[character][attribute_type]["numerical data"]= turn
                     else:
-                        actions_dict[character][attribute_type]["merging changes"] = {"all_dicisions":[]}
+                        actions_dict[character][attribute_type]["merging changes"] = {}
                         actions_dict[character][attribute_type]["numerical data"]= {}
                     print(f"{character}[{attribute_type}]:{actions_dict[character][attribute_type]}")
                     if attribute_type in existing_functions:
@@ -361,7 +363,14 @@ def extract_characters_and_actions_with_merging(ut, short_story, model, existing
 
         
     
-
+def convert_sets_to_lists(obj):
+    if isinstance(obj, set):
+        return list(obj)
+    elif isinstance(obj, dict):
+        return {k: convert_sets_to_lists(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_sets_to_lists(item) for item in obj]
+    return obj
 def main():
     parser = argparse.ArgumentParser(description="Process a corpus using a language model.")
     parser.add_argument("--model", required=False, help="Name of the language model (e.g., GPT-4, Claude, Gemini)")
