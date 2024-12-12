@@ -71,25 +71,25 @@ import re
 
 
 def generate_text_gpt(prompt, model, max_tokens=100, temperature=0.7,client=None):
-    print(prompt)
+    # print(prompt)
     try:
-        generated_text=""
-        while generated_text=="":
-            time.sleep(2)
-            # Set your OpenAI API Key
-            client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+        # generated_text=""
+        # while generated_text=="":
+        #     time.sleep(2)
+        # Set your OpenAI API Key
+        client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-            response = client.completions.create(
-                model=model,
-                prompt = prompt,
-                temperature=0,
-                max_tokens=350
-            )
+        response = client.completions.create(
+            model=model,
+            prompt = prompt,
+            temperature=0,
+            max_tokens=350
+        )
 
-            
-            
-            generated_text = response.choices[0].text.strip()
-            print(f"generate text is :\n {generated_text}")
+        
+        
+        generated_text = response.choices[0].text.strip()
+        print(f"generate text is :\n{generated_text}")
         return generated_text
     except Exception as e:
         print(f"Error generating text: {e}")
@@ -141,10 +141,12 @@ def generate_action_prompt(character, short_story, attribute_type, role_list):
     if not role_list:
         return f"""
         Analyze the given short story and identify the character {character}'s primary {attribute_type}. 
-        Please provide exactly 5 concise attributes in a list format. Each attribute should be a single or double word, without any specific names, descriptions, or extra text.
-
+        Please provide exactly 5 concise {attribute_type} in a list format. Each {attribute_type} should be ONLY a single or double word, without any specific names, descriptions, or extra text.
+       
         **Short story:**
         {short_story}
+        
+        
         """
 
     else:
@@ -215,75 +217,104 @@ def extract_characters_and_actions(ut, short_story, model, existing_functions,te
                         existing_functions[attribute_type].update(actions)
                    
     return characters, actions_dict, existing_functions
+import re
 
 def merge_replace_or_add_output_parsing(text):
-    # Updated pattern to handle the specific format you showed
-    pattern = r"\*{0,2}Decision:\*{0,2}\s*(\w+\s*\w*)\s*\*{0,2}Explanation:\*{0,2}\s*(.*?)\s*\*{0,2}Suggested\s*\w+:\*{0,2}\s*(.*)"
-
-    match = re.search(pattern, text, re.DOTALL)
-
+    # Regex pattern to match the three sections: Decision, Rationale, and Recommended Term
+    pattern = r"""Decision:\s*(.+?)\nRationale:\s*(.+?)\nRecommended Term:\s*(.+)"""
+    
+    # Perform regex search using DOTALL for multiline handling
+    match = re.search(pattern, text, re.DOTALL | re.VERBOSE)
+    
+    # Set default values in case no match is found
+    decision = "No Decision"
+    rationale = "No Rationale"
+    recommended_term = "None"
+    
     if match:
-        decision = match.group(1)
-        explanation = match.group(2).strip()
-        suggested = match.group(3).strip() if match.group(3) else "None"
-    print("""***********""")
-    print(f"Decision: {decision}")
-    print(f"Explanation: {explanation}")
-    print(f"Suggested: {suggested}")
-    print("""------------""")
+        # Extracting the matched groups
+        decision = match.group(1).strip()  # Strip leading/trailing whitespace
+        rationale = match.group(2).strip()  # Strip leading/trailing whitespace
+        recommended_term = match.group(3).strip()  # Strip leading/trailing whitespace
+
+        # Remove extra newlines from Rationale and Recommended Term, if any
+        rationale = " ".join(rationale.splitlines()).strip()  # Merge lines into one and clean up
+        recommended_term = " ".join(recommended_term.splitlines()).strip()  # Same for the recommended term
+
+        # Printing the structured output
+        print("***********")
+        print(f"Decision: {decision}")
+        print(f"Rationale: {rationale}")
+        print(f"Recommended Term: {recommended_term}")
+    else:
+        print("No match found.")
     
+    return decision, rationale, recommended_term
     
-    return decision, explanation, suggested
-    
-def merge_replace_or_add(actions,attribute_type_existing_functions, attribute_type, model, client,temperature, changes_in_global_list={},merge_action_over_global=0, merge_global_over_action=0, merge_new=0, kept_separate=0):
+def merge_replace_or_add(actions,attribute_type_existing_functions, attribute_type, model, client,temperature, changes_in_global_list={},merge_action_over_global=0, merge_global_over_action=0, merge_new=0, kept_separate=0,used_from_existing_functions=0):
+    print("MERGE REPLACE OR ADD\n")
+    all_dicisions=[]
+    # print(f"ACTIONS:{actions}\n")
     for i, action in enumerate(actions):
-        potential = argmax_cosine_sim(action,attribute_type_existing_functions)
-        prompt = f"""Name of this project is "MERGE IF POSSIBLE". I have two {attribute_type}s: "{action}" and "{potential}".
+        if action not in attribute_type_existing_functions:
+            potential = argmax_cosine_sim(action,attribute_type_existing_functions)
+            print(f"ACRION:{action}, POTENTIAL:{potential}\n")
+            prompt = f"""
+            Task: Compare the terms "{action}" and "{potential}" within the context of {attribute_type}.  
 
-Merging Guidelines:
-- Analyze semantic, functional, and contextual similarities
-- Identify substantial conceptual overlap
-- Consider a more comprehensive understanding through merging
-- Reduce unnecessary distinctions while preserving critical nuance
+Evaluation:  
+1. Are the terms distinct, overlapping, or synonymous?  
+2. Should they be merged or kept separate?  
 
-Evaluation Criteria:
-1. >80% similarity: Merge strongly
-2. 50-80% similarity: Carefully evaluate differences
-3. <50% similarity: Keep separate
+Output:  
+- Decision: [Merge / Keep Separate]  
+- Rationale: Briefly explain your reasoning (1-2 sentences).  
+- Recommended Term: Recommend either one of the original terms or propose a new term that better encompasses both. If separate, state "None."  
 
-Decision Framework:
-- Merge: Combine if substantially similar
-- Keep Separate: Retain if meaningful differences exist
+Keep the explanation concise and focused on clarity.  
 
-Output Structure:
-Decision: [Merge/Keep Separate]
-Explanation: [Concise reasoning]
-Suggested {attribute_type}: [Comprehensive term or "None"]
-
-Critical Instruction: Prioritize meaningful categorization for clarity and insight, avoiding unnecessary complexity."""
-
-        
-        
-        print(f"\n\nPROMPT:{prompt}\n")
-        output = generate_text_gpt(prompt, model,client, temperature=temperature)
-        decision, explanation, suggested_action  = merge_replace_or_add_output_parsing(output)
-        print(f"\nOUTPUT:{output}\n")
-        if decision.lower() == "merge":
-            if suggested_action == potential:
-                merge_global_over_action+=1
-                actions[i] = potential
-            elif suggested_action == action:
-                merge_action_over_global+=1
-                attribute_type_existing_functions = list(map(lambda x: x.replace(potential, suggested_action), attribute_type_existing_functions))
-                changes_in_global_list[potential]=suggested_action # at the end we can merge all the changes that are one after another, to one.
+            """
+            # print(f"\n\nPROMPT:{prompt}\n")
+            output = generate_text_gpt(prompt, model,client, temperature=temperature)
+            decision, explanation, suggested_action  = merge_replace_or_add_output_parsing(output)
+            print(f"\nOUTPUT:{output}\n")
+            if decision.lower() == "merge":
+                if suggested_action == potential:
+                    merge_global_over_action+=1
+                    actions[i] = potential
+                elif suggested_action == action:
+                    merge_action_over_global+=1
+                    attribute_type_existing_functions = list(map(lambda x: x.replace(potential, suggested_action), attribute_type_existing_functions))
+                    changes_in_global_list[potential]=suggested_action # at the end we can merge all the changes that are one after another, to one.
+                else:
+                    merge_new+=1
+                    actions[i] = potential
+                    attribute_type_existing_functions = list(map(lambda x: x.replace(potential, suggested_action), attribute_type_existing_functions))
+                    changes_in_global_list[potential]=suggested_action # at the end we can merge all the changes that are one after another, to one.
             else:
-                merge_new+=1
-                actions[i] = potential
-                attribute_type_existing_functions = list(map(lambda x: x.replace(potential, suggested_action), attribute_type_existing_functions))
-                changes_in_global_list[potential]=suggested_action # at the end we can merge all the changes that are one after another, to one.
+                kept_separate+=1
         else:
-            kept_separate+=1
-    return actions, attribute_type_existing_functions, changes_in_global_list, decision, explanation, suggested_action, merge_action_over_global, merge_global_over_action, merge_new, kept_separate
+            if len(attribute_type_existing_functions)>0:
+                used_from_existing_functions+=1
+                decision, explanation, suggested_action = f"{attribute_type} is already in existing list", f"{attribute_type} is already in existing list", f"{attribute_type} is already in existing list"
+            else:
+                kept_separate+=1
+                decision, explanation, suggested_action = f"no existing list", f"no existing list", f"no existing list"
+        all_dicisions.append(
+            
+            
+            {
+               "term":action,
+               "potential":potential,
+               "attribute type": attribute_type,
+               "decision":  decision,
+               "explanation": explanation,
+               "suggested term": suggested_action
+                
+                
+            }
+        )    
+    return actions, attribute_type_existing_functions, changes_in_global_list, decision, explanation, suggested_action, merge_action_over_global, merge_global_over_action, merge_new, kept_separate, used_from_existing_functions, all_dicisions
                 
             
   
@@ -294,7 +325,7 @@ def extract_characters_and_actions_with_merging(ut, short_story, model, existing
     characters = extract_characters(ut, short_story, model, pipe,client,temperature=temperature)
     actions_dict = {}
     changes_in_global_list = {}
-    merge_action_over_global, merge_global_over_action, merge_new, kept_separate = 0,0,0,0
+    merge_action_over_global, merge_global_over_action, merge_new, kept_separate, used_from_existing_functions = 0, 0, 0, 0, 0
     all_changes_as_variables_in_a_list = []
     if characters:
         
@@ -309,15 +340,24 @@ def extract_characters_and_actions_with_merging(ut, short_story, model, existing
                 action_response = generate_model_response(action_prompt, model, ut, pipe,client,temperature=temperature)
                 actions = extract_actions(model, action_response)
                 if len(existing_functions[attribute_type])>0:
-                    actions, existing_functions[attribute_type], changes_in_global_list, decision, explanation, suggested_action, merge_action_over_global, merge_global_over_action, merge_new, kept_separate = merge_replace_or_add(actions,existing_functions[attribute_type],attribute_type, model,client,temperature,changes_in_global_list,merge_action_over_global, merge_global_over_action, merge_new, kept_separate)
-                    all_changes_as_variables_in_a_list.append({"turn":i,"merge_action_over_global":merge_action_over_global, "merge_global_over_action":merge_global_over_action, "merge_new":merge_new, "kept_separate":kept_separate})
+                    actions, existing_functions[attribute_type], changes_in_global_list, decision, explanation, suggested_action, merge_action_over_global, merge_global_over_action, merge_new, kept_separate,used_from_existing_functions, all_dicisions = merge_replace_or_add(actions,existing_functions[attribute_type],attribute_type, model,client,temperature,changes_in_global_list,merge_action_over_global, merge_global_over_action, merge_new, kept_separate,used_from_existing_functions)
+                    turn = {"turn":i,"merge_action_over_global":merge_action_over_global, "merge_global_over_action":merge_global_over_action, "merge_new":merge_new, "kept_separate":kept_separate,"used_from_existing_functions":used_from_existing_functions}
+                    all_changes_as_variables_in_a_list.append(turn)
                 if actions:
-                    actions_dict[character][attribute_type] = actions  # Add to actions dictionary if actions were found
+                    if attribute_type not in actions_dict[character]:
+                        actions_dict[character][attribute_type]={}
+                    actions_dict[character][attribute_type]["values"] = actions  # Add to actions dictionary if actions were found
+                    if len(existing_functions[attribute_type])>0:
+                        actions_dict[character][attribute_type]["merging changes"] = {"all_dicisions":all_dicisions}
+                        actions_dict[character][attribute_type]["numerical data"]= turn
+                    else:
+                        actions_dict[character][attribute_type]["merging changes"] = {"all_dicisions":[]}
+                        actions_dict[character][attribute_type]["numerical data"]= {}
                     print(f"{character}[{attribute_type}]:{actions_dict[character][attribute_type]}")
                     if attribute_type in existing_functions:
                         existing_functions[attribute_type].update(actions)
                    
-    return characters, actions_dict, existing_functions, changes_in_global_list, decision, explanation, suggested_action, all_changes_as_variables_in_a_list
+    return characters, actions_dict, existing_functions, changes_in_global_list
 
         
     
@@ -365,7 +405,7 @@ def main():
             short_story = movie["Plot"]
             title = movie["Title"]
             if args.merge == True:
-                characters, actions_dict, existing_functions, changes_in_global_list, decision, explanation, suggested_action, all_changes_as_variables_in_a_list = extract_characters_and_actions_with_merging(ut, short_story,args.model, existing_functions,args.temperature, pipe, args.prompt,client)
+                characters, actions_dict, existing_functions, changes_in_global_list = extract_characters_and_actions_with_merging(ut, short_story,args.model, existing_functions,args.temperature, pipe, args.prompt,client)
                 if characters is not None and actions_dict!=[]:
                     # existing_functions.update([action for actions in actions_dict.values() for action in actions])
                     
@@ -375,11 +415,7 @@ def main():
                         "actions_dict": actions_dict,
                         "all_actions": {k: list(v) for k, v in existing_functions.items()},
                         "plot": short_story,
-                        "changes_in_global_list": changes_in_global_list,
-                        "decision": decision,
-                        "explanation":explanation,
-                        "suggested_action":suggested_action,
-                        "all_changes_as_variables_in_a_list":all_changes_as_variables_in_a_list
+                        "changes_in_global_list": changes_in_global_list
                         
                     }
             else:
@@ -395,8 +431,10 @@ def main():
                         "plot": short_story,
                         
                     }
+            
             jsonl_file.write(json.dumps(extracted_output, indent=4, ensure_ascii=False) + '\n')
 
+            
     print(f"Processing complete. Output saved to {args.output_path}.")
 
 if __name__ == "__main__":
