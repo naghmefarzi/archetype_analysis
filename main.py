@@ -221,26 +221,20 @@ import re
 
 def merge_replace_or_add_output_parsing(text):
     # Regex pattern to match the three sections: Decision, Rationale, and Recommended Term
-    pattern = r"""Decision:\s*(.+?)\s*Rationale:\s*(.+?)\s*Recommended Term:\s*(.+?)"""
     
-    # Perform regex search using DOTALL for multiline handling
-    match = re.search(pattern, text, re.DOTALL | re.VERBOSE)
     
     # Set default values in case no match is found
     # decision = "No Decision"
     # rationale = "No Rationale"
     # recommended_term = "None"
     
+    pattern = r"(.*)\s*- Decision:\s*(.*?-)\s*- Rationale:\s*(.*?-)\s*- Recommended Term:\s*(.*)"
+    match = re.search(pattern, text, re.DOTALL)
+
     if match:
-        # Extracting the matched groups
-        decision = match.group(1).strip()  # Strip leading/trailing whitespace
-        rationale = match.group(2).strip()  # Strip leading/trailing whitespace
-        recommended_term = match.group(3).strip()  # Strip leading/trailing whitespace
-
-        # Remove extra newlines from Rationale and Recommended Term, if any
-        rationale = " ".join(rationale.splitlines()).strip()  # Merge lines into one and clean up
-        recommended_term = " ".join(recommended_term.splitlines()).strip()  # Same for the recommended term
-
+        decision = match.group(1).strip()
+        rationale = match.group(2).strip()
+        recommended_term = match.group(3).strip()
         # Printing the structured output
         print("***********")
         print(f"Decision: {decision}")
@@ -270,7 +264,7 @@ Evaluation:
 Output:  
 - Decision: [Merge / Keep Separate]  
 - Rationale: Briefly explain your reasoning (1-2 sentences).  
-- Recommended Term: Recommend either one of the original terms or propose a new term that better encompasses both. If separate, state "None."  
+- Recommended Term: Recommend either one of the original terms or propose a new term that better encompasses both. If separate, state "None"  
 
 Keep the explanation concise and focused on clarity.  
 
@@ -326,6 +320,7 @@ def extract_characters_and_actions_with_merging(ut, short_story, model, existing
     # existing_functions = {'role': set(), 'action': set(), 'trait': set()} - for example - it can be different according to the prompt
     characters = extract_characters(ut, short_story, model, pipe,client,temperature=temperature)
     actions_dict = {}
+    all_dicisions, turn = {},{}
     changes_in_global_list = {}
     merge_action_over_global, merge_global_over_action, merge_new, kept_separate, used_from_existing_functions = 0, 0, 0, 0, 0
     all_changes_as_variables_in_a_list = []
