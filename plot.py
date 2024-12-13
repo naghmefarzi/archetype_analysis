@@ -38,9 +38,10 @@ def extract_numerical_data(data, data_labels):
 
     return movie_labels, numerical_data_roles, numerical_data_actions, numerical_data_traits
 
-def plot_graphs(data, data_labels, movie_labels, category_name, output_file):
+def plot_graphs(data, data_labels, movie_labels, category_name, output_file, input_file):
     """Plot bar and line graphs for the given data."""
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 15), constrained_layout=True)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(20, 20))
+    plt.tight_layout()
 
     # Bar graph subplot
     bar_width = 0.1
@@ -65,18 +66,18 @@ def plot_graphs(data, data_labels, movie_labels, category_name, output_file):
     # Line plot labels and formatting
     ax2.set_xlabel('Characters in Movies')
     ax2.set_ylabel('Numerical Data')
-    ax2.set_title(f'Line Graph - Trends for {category_name.capitalize()} in All Movies')
+    ax2.set_title(f'Line Graph - Trends for {category_name.capitalize()} in All Movies\nfilename:{input_file}')
     ax2.set_xticks(index)
     ax2.set_xticklabels(movie_labels, rotation=45)  # Rotate x-tick labels
     ax2.legend()
 
     # Save the plot to the specified file
-    plt.savefig(f"./plots/{output_file}")
+    plt.savefig(f"/data/naghmeh/plots/{output_file}")
     plt.close()  # Close the plot after saving to free memory
 
 def main(args):
     """Main function to load data, process, and generate plots."""
-    data_labels = ["turn", "merge_action_over_global", "merge_global_over_action", "merge_new", "kept_separate", "used_from_existing_functions"]
+    data_labels = [ "merge_action_over_global", "merge_global_over_action", "merge_new", "kept_separate", "used_from_existing_functions"]
     categories = ["roles", "actions", "traits"]
 
     # Load data
@@ -86,9 +87,9 @@ def main(args):
     movie_labels, numerical_data_roles, numerical_data_actions, numerical_data_traits = extract_numerical_data(data, data_labels)
 
     # Plot and save the graphs for each category
-    plot_graphs(numerical_data_roles, data_labels, movie_labels, "roles", args.roles_output)
-    plot_graphs(numerical_data_actions, data_labels, movie_labels, "actions", args.actions_output)
-    plot_graphs(numerical_data_traits, data_labels, movie_labels, "traits", args.traits_output)
+    plot_graphs(numerical_data_roles, data_labels, movie_labels, "roles", args.roles_output,args.file_path)
+    plot_graphs(numerical_data_actions, data_labels, movie_labels, "actions", args.actions_output,args.file_path)
+    plot_graphs(numerical_data_traits, data_labels, movie_labels, "traits", args.traits_output,args.file_path)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process and plot numerical data from JSONL file.")
@@ -103,7 +104,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Ensure output directory exists
-    os.makedirs("./plots", exist_ok=True)
+    os.makedirs("/data/naghmeh/plots", exist_ok=True)
 
     # Run the main function
     main(args)
