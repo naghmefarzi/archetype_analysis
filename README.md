@@ -22,7 +22,6 @@ The purpose of this project is to automate the extraction of character informati
 
 ## Requirements
 
-- Python 3.x
 - `gensim`
 - `google-generativeai`
 - `spacy`
@@ -80,3 +79,29 @@ The output is saved in a JSON Lines format, where each line contains a JSON obje
 }
 
 The similarity then is being calculated using jaccard and embediing based cosine similarity, between then actions.
+
+
+
+
+
+To run with gpt models:
+
+First:
+export OPENAI_API_KEY="your api key"
+
+To run the program:
+
+python main.py 
+--model "gpt model" 
+--output_path "jsonl output path" 
+--temperature "gpt model temp" 
+--seed "random seed" 
+--merge
+
+To make plots:
+
+python plot.py 
+"jsonl input file"
+--roles_output name_of_the_roles_plot_file.png 
+--actions_output name_of_the_roles_plot_file.png 
+--traits_output name_of_the_roles_plot_file.png
