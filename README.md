@@ -72,9 +72,44 @@ The output is saved in a JSON Lines format, where each line contains a JSON obje
   "plot": "The narrative text of the story.",
   "characters": ["Character 1", "Character 2", ...],
   "actions_dict": {
-    "Character 1": ["Action 1", "Action 2", ...],
-    "Character 2": ["Action 1", "Action 2", ...]
-  },
+  "Character 1": {
+      "roles": {
+          "values": [
+              "Role 1",
+              "Role 2",
+              "Role 3",
+              "Role 4",
+              "Role 5",
+          ],
+          "merging changes": [
+              {
+              "term": "role 1",
+              "potential": "potential term from global list",
+              "all existing list": [
+                  "Role 1",
+                  "Role 2",
+                  "Role 3",
+                  "Role 4",
+                  "Role 5",
+
+                ],
+              "attribute type": "roles",
+              "decision": "Keep Separate",
+              "explanation": "rationale",
+              "suggested term": "None"
+            },
+            ...],
+            "numerical data": {
+                    "turn":  1,
+                    "merge_action_over_global": 0,
+                    "merge_global_over_action": 0,
+                    "merge_new": 0,
+                    "kept_separate": 20,
+                    "used_from_existing_functions": 0
+                }
+        },
+    }
+  }
   "all_actions": ["Action 1", "Action 2", ...]
 }
 

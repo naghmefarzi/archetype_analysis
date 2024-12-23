@@ -16,7 +16,7 @@ import openai
 from openai import OpenAI
 from similarity import argmax_cosine_sim
 import os
-from prompts import merge_prompt
+from prompts import merge_prompt, extract_feature_prompt, extract_features_with_global_list_prompt, extract_characters_prompt
 
 # client = None
 
@@ -101,8 +101,8 @@ def generate_text_gpt(prompt, model, max_tokens=100, temperature=0.7,client=None
 def generate_character_prompt(short_story):
     """Generate the character identification prompt."""
     # return f"Identify the significant characters in the following story:\n{short_story}"
-    return f"Identify only the main significant characters in the following story and return only their names in a list format, without any additional text or description:\n{short_story}"
-
+    # return f"Identify only the main significant characters in the following story and return only their names in a list format, without any additional text or description:\n{short_story}"
+    return extract_characters_prompt.format(short_story=short_story)
 
 def extract_characters(ut, short_story, model, pipe,client,temperature):
     """Extract characters from the story based on the model."""
@@ -140,29 +140,31 @@ def extract_characters(ut, short_story, model, pipe,client,temperature):
 def generate_action_prompt(character, short_story, attribute_type, role_list):
     """Generate the action or trait prompt for a specific character and attribute."""
     if not role_list:
-        return f"""
-        Analyze the given short story and identify the character {character}'s primary {attribute_type}. 
-        Please provide exactly 5 concise {attribute_type} in a list format. Each {attribute_type} should be ONLY a single or double word, without any specific names, descriptions, or extra text.
+        # return f"""
+        # Analyze the given short story and identify the character {character}'s primary {attribute_type}. 
+        # Please provide exactly 5 concise {attribute_type} in a list format. Each {attribute_type} should be ONLY a single or double word, without any specific names, descriptions, or extra text.
        
-        **Short story:**
-        {short_story}
+        # **Short story:**
+        # {short_story}
         
         
-        """
+        # """
+        return extract_feature_prompt.format(character=character,attribute_type=attribute_type,short_story=short_story)
 
     else:
         print(f"global list:{role_list}")
-        return f"""
-        Analyze the given short story and identify the character {character}'s primary {attribute_type}. 
-        Please provide exactly 5 concise attributes in a list format. Each attribute should be a single or double word, without any specific names, descriptions, or extra text.
-        Use the provided {attribute_type} list as a guide, but suggest a new {attribute_type} if it better fits the character's actions and motivations within the story.
+        # return f"""
+        # Analyze the given short story and identify the character {character}'s primary {attribute_type}. 
+        # Please provide exactly 5 concise attributes in a list format. Each attribute should be a single or double word, without any specific names, descriptions, or extra text.
+        # Use the provided {attribute_type} list as a guide, but suggest a new {attribute_type} if it better fits the character's actions and motivations within the story.
 
-        **Short story:**
-        {short_story}
+        # **Short story:**
+        # {short_story}
 
-        **{attribute_type} list:**
-        {role_list}
-        """
+        # **{attribute_type} list:**
+        # {role_list}
+        # """
+        return extract_features_with_global_list_prompt.format(character=character,attribute_type=attribute_type,short_story=short_story,role_list=role_list)
 
 
 def generate_model_response(action_prompt, model, ut, pipe,client,temperature):
