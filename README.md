@@ -65,54 +65,54 @@ Main Execution: Loops through the data list, generates character and action data
 
 Output Format
 The output is saved in a JSON Lines format, where each line contains a JSON object with the following structure:
-
-
-{
-  "title": "Story Title",
-  "plot": "The narrative text of the story.",
-  "characters": ["Character 1", "Character 2", ...],
-  "actions_dict": {
-  "Character 1": {
-      "roles": {
-          "values": [
-              "Role 1",
-              "Role 2",
-              "Role 3",
-              "Role 4",
-              "Role 5",
-          ],
-          "merging changes": [
-              {
-              "term": "role 1",
-              "potential": "potential term from global list",
-              "all existing list": [
-                  "Role 1",
-                  "Role 2",
-                  "Role 3",
-                  "Role 4",
-                  "Role 5",
-
-                ],
-              "attribute type": "roles",
-              "decision": "Keep Separate",
-              "explanation": "rationale",
-              "suggested term": "None"
-            },
-            ...],
-            "numerical data": {
-                    "turn":  1,
-                    "merge_action_over_global": 0,
-                    "merge_global_over_action": 0,
-                    "merge_new": 0,
-                    "kept_separate": 20,
-                    "used_from_existing_functions": 0
-                }
-        },
-    }
-  }
-  "all_actions": ["Action 1", "Action 2", ...]
-}
-
+   
+   ```json
+   {
+     "title": "Story Title",
+     "plot": "The narrative text of the story.",
+     "characters": ["Character 1", "Character 2", ...],
+     "actions_dict": {
+     "Character 1": {
+         "roles": {
+             "values": [
+                 "Role 1",
+                 "Role 2",
+                 "Role 3",
+                 "Role 4",
+                 "Role 5",
+             ],
+             "merging changes": [
+                 {
+                 "term": "role 1",
+                 "potential": "potential term from global list",
+                 "all existing list": [
+                     "Role 1",
+                     "Role 2",
+                     "Role 3",
+                     "Role 4",
+                     "Role 5",
+   
+                   ],
+                 "attribute type": "roles",
+                 "decision": "Keep Separate",
+                 "explanation": "rationale",
+                 "suggested term": "None"
+               },
+               ...],
+               "numerical data": {
+                       "turn":  1,
+                       "merge_action_over_global": 0,
+                       "merge_global_over_action": 0,
+                       "merge_new": 0,
+                       "kept_separate": 20,
+                       "used_from_existing_functions": 0
+                   }
+           },
+       }
+     }
+     "all_actions": ["Action 1", "Action 2", ...]
+   }
+```
 The similarity then is being calculated using jaccard and embediing based cosine similarity, between then actions.
 
 
